@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <title>添加用户 - OpenPMS</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            padding: 20px 30px;
+            margin-bottom: 30px;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .nav {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .nav-btn.active {
+            background: rgba(255, 255, 255, 0.25);
+            font-weight: bold;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto 40px;
+            padding: 0 20px;
+        }
+
+        /* 表单卡片样式 */
+        .form-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+
+        .form-header {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            padding: 20px 30px;
+        }
+
+        .form-header h2 {
+            font-size: 20px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-header h2:before {
+            content: "＋";
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .form-content {
+            padding: 30px;
+        }
+
+        /* 当前用户信息 */
+        .current-user-info {
+            background: #e8f4fd;
+            color: #004085;
+            padding: 12px 15px;
+            border-radius: 6px;
+            border-left: 4px solid #007bff;
+            margin-bottom: 20px;
+        }
+
+        /* 管理员徽章 */
+        .superuser-badge {
+            background: linear-gradient(135deg, #dc3545, #c82333);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .main-admin-badge {
+            background: linear-gradient(135deg, #ffc107, #fd7e14);
+            color: #333;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .sub-admin-badge {
+            background: linear-gradient(135deg, #6f42c1, #6610f2);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .user-badge {
+            background: #e9ecef;
+            color: #6c757d;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        /* 表单组样式 */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #444;
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #333;
+            background: #fff;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            border-color: #2a5298;
+            box-shadow: 0 0 0 3px rgba(42, 82, 152, 0.1);
+        }
+
+        /* 密码确认组 */
+        .password-confirm {
+            position: relative;
+        }
+
+        .password-match {
+            font-size: 12px;
+            color: #28a745;
+            margin-top: 5px;
+            display: none;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .password-mismatch {
+            font-size: 12px;
+            color: #dc3545;
+            margin-top: 5px;
+            display: none;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* 密码强度指示器 */
+        .password-strength {
+            margin-top: 8px;
+            display: none;
+        }
+
+        .strength-bar {
+            height: 4px;
+            background: #e9ecef;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+
+        .strength-fill {
+            height: 100%;
+            width: 0%;
+            border-radius: 2px;
+            transition: width 0.3s, background 0.3s;
+        }
+
+        /* 复选框样式 */
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 0;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #444;
+            user-select: none;
+        }
+
+        .checkbox-custom {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .checkbox-custom:after {
+            content: "✓";
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        input[type="checkbox"] {
+            display: none;
+        }
+
+        input[type="checkbox"]:checked+.checkbox-custom {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            border-color: #007bff;
+        }
+
+        input[type="checkbox"]:checked+.checkbox-custom:after {
+            opacity: 1;
+        }
+
+        /* 权限组样式 */
+        .permission-group {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 15px;
+            border: 1px solid #e9ecef;
+        }
+
+        .permission-group h4 {
+            margin-bottom: 10px;
+            color: #495057;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        /* 按钮区域 */
+        .form-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 25px;
+            border-top: 1px solid #eee;
+            margin-top: 20px;
+        }
+
+        .btn-submit {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 15px;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-submit:hover {
+            background: linear-gradient(135deg, #218838, #1ca179);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.2);
+        }
+
+        .btn-submit:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-back {
+            background: #6c757d;
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.3s;
+        }
+
+        .btn-back:hover {
+            background: #5a6268;
+            transform: translateY(-1px);
+        }
+
+        /* 消息提示样式 */
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+
+        .flash {
+            padding: 12px 20px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            border-left: 4px solid transparent;
+        }
+
+        .flash.success {
+            background: #d4edda;
+            color: #155724;
+            border-left-color: #28a745;
+        }
+
+        .flash.danger {
+            background: #f8d7da;
+            color: #721c24;
+            border-left-color: #dc3545;
+        }
+
+        .flash.warning {
+            background: #fff3cd;
+            color: #856404;
+            border-left-color: #ffc107;
+        }
+
+        /* 必填字段标记 */
+        .required::after {
+            content: " *";
+            color: #dc3545;
+        }
+
+        /* 添加状态指示器 */
+        .add-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(40, 167, 69, 0.1);
+            color: #28a745;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+
+        /* 密码显示/隐藏按钮 */
+        .toggle-password {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #666;
+            font-size: 14px;
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 15px;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            .form-content {
+                padding: 20px;
+            }
+
+            .header {
+                padding: 15px 20px;
+            }
+
+            .header-top {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .nav {
+                flex-wrap: wrap;
+            }
+
+            .form-actions {
+                flex-direction: column-reverse;
+                gap: 15px;
+                align-items: stretch;
+            }
+
+            .btn-submit,
+            .btn-back {
+                width: 100%;
+                justify-content: center;
+                margin-left: 0;
+                margin-bottom: 5px;
+            }
+        }
+
+        /* 编辑状态指示器 */
+        .edit-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(0, 123, 255, 0.1);
+            color: #007bff;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+
+        /* 退出登录按钮 - 更新为纯文本样式 */
+        .btn-logout {
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            transition: opacity 0.3s;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .btn-logout:hover {
+            opacity: 0.8;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* 级别选项样式 */
+        .level-option {
+            padding: 8px 12px;
+            margin: 4px 0;
+            border-radius: 4px;
+            background: #f8f9fa;
+        }
+
+        .level-option:hover {
+            background: #e9ecef;
+        }
+
+        .level-option.selected {
+            background: #e8f4fd;
+            border-left: 3px solid #007bff;
+        }
+
+        /* 权限徽章 */
+        .permission-badge {
+            background: #e8f4fd;
+            color: #0056b3;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 11px;
+            margin-right: 4px;
+            border: 1px solid #b3d7ff;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <div class="header-top">
+            <h1>OpenPMS</h1>
+            <div class="user-info">
+                <span>欢迎，{{ current_user.username }}</span>
+                {% if current_user.is_admin %}
+                <span
+                    style="background: #ffc107; color: #333; padding: 4px 10px; border-radius: 12px; font-size: 12px;">
+                    {{ current_user.admin_level_display }}
+                </span>
+                {% endif %}
+                <a href="{{ url_for('logout') }}" class="btn-logout">退出登录</a>
+            </div>
+        </div>
+
+        <div class="nav">
+            <a href="{{ url_for('index') }}" class="nav-btn">生产记录</a>
+
+            {% if has_perm('add_record') %}
+            <a href="{{ url_for('add_record') }}" class="nav-btn">添加记录</a>
+            {% endif %}
+
+            {% if has_perm('manage_process') %}
+            <a href="{{ url_for('process_list') }}" class="nav-btn">工序管理</a>
+            {% endif %}
+
+            {% if has_perm('manage_operator') %}
+            <a href="{{ url_for('operator_list') }}" class="nav-btn">操作员管理</a>
+            {% endif %}
+
+            {% if has_perm('manage_users') %}
+            <a href="{{ url_for('user_list') }}" class="nav-btn active">用户管理 <span
+                    class="edit-indicator">添加用户</span></a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- 消息提示 -->
+        <div class="flash-messages">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            {% for category, msg in messages %}
+            <div class="flash {{ category }}">{{ msg }}</div>
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
+        </div>
+
+        <!-- 当前用户信息 -->
+        <div class="current-user-info">
+            <div style="font-size: 13px; display: flex; align-items: center; gap: 8px;">
+                <span>🔑</span>
+                <span>
+                    当前登录用户: <strong>{{ current_user.username }}</strong>
+                    <!-- 显示具体的管理员级别 -->
+                    {% if current_user.user_level == 3 %}
+                    <span class="superuser-badge" style="margin-left: 8px;">超级管理员</span>
+                    {% elif current_user.user_level == 2 %}
+                    <span class="main-admin-badge" style="margin-left: 8px;">管理员</span>
+                    {% elif current_user.user_level == 1 %}
+                    <span class="sub-admin-badge" style="margin-left: 8px;">子管理员</span>
+                    {% else %}
+                    <span class="user-badge" style="margin-left: 8px;">普通用户</span>
+                    {% endif %}
+                </span>
+            </div>
+            <div style="font-size: 12px; margin-top: 5px;">
+                您可以为该用户授予以下权限：
+                <!-- 显示具体权限 -->
+                <div style="margin-top: 5px; font-size: 12px;">
+                    {% if current_user.can_add_record %}<span class="permission-badge">📝添加记录</span>{% endif %}
+                    {% if current_user.can_manage_users %}<span class="permission-badge">👥用户管理</span>{% endif %}
+                    {% if current_user.can_manage_process %}<span class="permission-badge">🛠️工序管理</span>{% endif %}
+                    {% if current_user.can_manage_operator %}<span class="permission-badge">👷操作员管理</span>{% endif
+                    %}
+                </div>
+            </div>
+        </div>
+
+        <div class="form-card">
+            <div class="form-header">
+                <h2>添加新用户</h2>
+            </div>
+
+            <div class="form-content">
+                <form method="post" id="add-user-form">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="required">用户名</label>
+                            <input type="text" name="username" required placeholder="请输入用户名（3-20个字符）"
+                                id="username-input" autocomplete="username" minlength="3" maxlength="20">
+                            <div style="font-size: 12px; color: #666; margin-top: 5px;">
+                                用户名只能包含字母、数字和下划线，长度3-20个字符
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="required">密码</label>
+                            <div style="position: relative;">
+                                <input type="password" name="password" required placeholder="请输入密码（至少6个字符）"
+                                    id="password-input" autocomplete="new-password" minlength="6">
+                                <button type="button" class="toggle-password" id="toggle-password">👁️</button>
+                            </div>
+                            <div class="password-strength" id="password-strength">
+                                <div style="font-size: 12px; color: #666;">密码强度: <span id="strength-text">弱</span></div>
+                                <div class="strength-bar">
+                                    <div class="strength-fill" id="strength-fill"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="required">确认密码</label>
+                            <div style="position: relative;">
+                                <input type="password" name="confirm_password" required placeholder="请再次输入密码"
+                                    id="confirm-password-input" autocomplete="new-password" minlength="6">
+                                <button type="button" class="toggle-password" id="toggle-confirm-password">👁️</button>
+                            </div>
+                            <div class="password-match" id="password-match">
+                                <span>✓</span> 密码匹配
+                            </div>
+                            <div class="password-mismatch" id="password-mismatch">
+                                <span>✗</span> 密码不匹配
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 用户级别选择 -->
+                    <div class="form-group">
+                        <label>用户级别</label>
+                        <select name="user_level" id="user_level" class="form-control" required>
+                            {% for level in grantable_levels %}
+                            <option value="{{ level.level }}" {% if level.level==0 %}selected{% endif %}
+                                class="level-option">
+                                {{ level.name }}
+                                {% if level.level == 3 %} - 拥有所有权限{% endif %}
+                                {% if level.level == 2 %} - 可创建子管理员{% endif %}
+                                {% if level.level == 1 %} - 有限管理权限{% endif %}
+                                {% if level.level == 0 %} - 基础权限{% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- 具体权限设置（仅对非超级管理员显示） -->
+                    <div id="permission-section" style="display: none;">
+                        <div class="permission-group">
+                            <h4>具体权限设置</h4>
+                            <div style="font-size: 12px; color: #666; margin-bottom: 10px;">
+                                勾选要授予的具体权限（您只能授予自己拥有的权限）：
+                            </div>
+
+                            {% if 'add_record' in grantable_permissions %}
+                            <div class="checkbox-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="can_add_record" id="can_add_record" checked>
+                                    <span class="checkbox-custom"></span>
+                                    <span>添加生产记录</span>
+                                    <span style="font-size: 12px; color: #666;">（允许添加和编辑生产记录）</span>
+                                </label>
+                            </div>
+                            {% endif %}
+
+                            {% if 'manage_users' in grantable_permissions %}
+                            <div class="checkbox-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="can_manage_users" id="can_manage_users">
+                                    <span class="checkbox-custom"></span>
+                                    <span>用户管理</span>
+                                    <span style="font-size: 12px; color: #666;">（允许管理用户账号）</span>
+                                </label>
+                            </div>
+                            {% endif %}
+
+                            {% if 'manage_process' in grantable_permissions %}
+                            <div class="checkbox-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="can_manage_process" id="can_manage_process">
+                                    <span class="checkbox-custom"></span>
+                                    <span>工序管理</span>
+                                    <span style="font-size: 12px; color: #666;">（允许管理生产工序）</span>
+                                </label>
+                            </div>
+                            {% endif %}
+
+                            {% if 'manage_operator' in grantable_permissions %}
+                            <div class="checkbox-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="can_manage_operator" id="can_manage_operator">
+                                    <span class="checkbox-custom"></span>
+                                    <span>操作员管理</span>
+                                    <span style="font-size: 12px; color: #666;">（允许管理操作员）</span>
+                                </label>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <a href="{{ url_for('user_list') }}" class="btn-back">← 返回用户列表</a>
+                        <button type="submit" class="btn-submit" id="submit-btn">
+                            <span>👤</span> 添加用户
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 用户创建指南 -->
+        <div
+            style="background: #e8f4fd; color: #004085; padding: 15px; border-radius: 6px; border-left: 4px solid #007bff; margin-top: 20px;">
+            <div style="font-weight: 600; margin-bottom: 5px; display: flex; align-items: center; gap: 8px;">
+                <span>💡</span> 用户创建指南
+            </div>
+            <div style="font-size: 13px; line-height: 1.5;">
+                <p>1. 建议为用户设置强密码，包含大小写字母、数字和特殊字符。</p>
+                <p>2. 管理员账号应谨慎分配，仅授予需要系统管理权限的用户。</p>
+                <p>3. 普通用户只能查看和操作生产记录，无法管理系统设置。</p>
+                <p>4. 用户名创建后不可更改，请仔细确认。</p>
+                <p>5. 您只能授予自己拥有的权限给新用户。</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 密码强度检查
+        const passwordInput = document.getElementById('password-input');
+        const confirmPasswordInput = document.getElementById('confirm-password-input');
+        const passwordStrength = document.getElementById('password-strength');
+        const strengthFill = document.getElementById('strength-fill');
+        const strengthText = document.getElementById('strength-text');
+        const passwordMatch = document.getElementById('password-match');
+        const passwordMismatch = document.getElementById('password-mismatch');
+        const submitBtn = document.getElementById('submit-btn');
+        const userLevelSelect = document.getElementById('user_level');
+        const permissionSection = document.getElementById('permission-section');
+
+        // 用户级别变化时显示/隐藏权限设置
+        function togglePermissionSection() {
+            const selectedLevel = parseInt(userLevelSelect.value);
+            if (selectedLevel === 3) { // 超级管理员
+                permissionSection.style.display = 'none';
+                // 自动勾选所有权限
+                document.querySelectorAll('#permission-section input[type="checkbox"]').forEach(checkbox => {
+                    checkbox.checked = true;
+                    checkbox.disabled = true;
+                });
+            } else {
+                permissionSection.style.display = 'block';
+                // 启用所有复选框
+                document.querySelectorAll('#permission-section input[type="checkbox"]').forEach(checkbox => {
+                    checkbox.disabled = false;
+                });
+            }
+        }
+
+        userLevelSelect.addEventListener('change', togglePermissionSection);
+
+        // 初始加载时调用
+        togglePermissionSection();
+
+        function checkPasswordStrength(password) {
+            if (password.length === 0) {
+                passwordStrength.style.display = 'none';
+                return 0;
+            }
+
+            passwordStrength.style.display = 'block';
+
+            let strength = 0;
+
+            // 长度检查
+            if (password.length >= 6) strength += 1;
+            if (password.length >= 10) strength += 1;
+
+            // 复杂性检查
+            if (/[a-z]/.test(password)) strength += 1;
+            if (/[A-Z]/.test(password)) strength += 1;
+            if (/[0-9]/.test(password)) strength += 1;
+            if (/[^a-zA-Z0-9]/.test(password)) strength += 1;
+
+            // 更新UI
+            let percentage = 0;
+            let text = '';
+            let color = '';
+
+            if (strength <= 2) {
+                percentage = 33;
+                text = '弱';
+                color = '#dc3545';
+            } else if (strength <= 4) {
+                percentage = 66;
+                text = '中';
+                color = '#ffc107';
+            } else {
+                percentage = 100;
+                text = '强';
+                color = '#28a745';
+            }
+
+            strengthFill.style.width = percentage + '%';
+            strengthFill.style.background = color;
+            strengthText.textContent = text;
+            strengthText.style.color = color;
+
+            return strength;
+        }
+
+        function checkPasswordMatch() {
+            const password = passwordInput.value;
+            const confirmPassword = confirmPasswordInput.value;
+
+            if (password.length === 0 || confirmPassword.length === 0) {
+                passwordMatch.style.display = 'none';
+                passwordMismatch.style.display = 'none';
+                return false;
+            }
+
+            if (password === confirmPassword) {
+                passwordMatch.style.display = 'flex';
+                passwordMismatch.style.display = 'none';
+                return true;
+            } else {
+                passwordMatch.style.display = 'none';
+                passwordMismatch.style.display = 'flex';
+                return false;
+            }
+        }
+
+        function validateForm() {
+            const username = document.getElementById('username-input').value;
+            const password = passwordInput.value;
+            const confirmPassword = confirmPasswordInput.value;
+            const passwordMatch = checkPasswordMatch();
+            const passwordStrength = checkPasswordStrength(password);
+
+            // 用户名验证
+            if (username.length < 3 || username.length > 20 || !/^[a-zA-Z0-9_]+$/.test(username)) {
+                return false;
+            }
+
+            // 密码验证
+            if (password.length < 6) {
+                return false;
+            }
+
+            // 密码匹配验证
+            if (!passwordMatch) {
+                return false;
+            }
+
+            // 密码强度验证（可选，可以根据需求调整）
+            if (passwordStrength < 2) {
+                return false;
+            }
+
+            return true;
+        }
+
+        // 实时验证
+        passwordInput.addEventListener('input', function () {
+            checkPasswordStrength(this.value);
+            checkPasswordMatch();
+            submitBtn.disabled = !validateForm();
+        });
+
+        confirmPasswordInput.addEventListener('input', function () {
+            checkPasswordMatch();
+            submitBtn.disabled = !validateForm();
+        });
+
+        document.getElementById('username-input').addEventListener('input', function () {
+            submitBtn.disabled = !validateForm();
+        });
+
+        // 密码显示/隐藏切换
+        function togglePasswordVisibility(inputId, buttonId) {
+            const input = document.getElementById(inputId);
+            const button = document.getElementById(buttonId);
+
+            button.addEventListener('click', function () {
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    button.textContent = '🙈';
+                } else {
+                    input.type = 'password';
+                    button.textContent = '👁️';
+                }
+            });
+        }
+
+        togglePasswordVisibility('password-input', 'toggle-password');
+        togglePasswordVisibility('confirm-password-input', 'toggle-confirm-password');
+
+        // 表单提交验证
+        document.getElementById('add-user-form').addEventListener('submit', function (e) {
+            if (!validateForm()) {
+                e.preventDefault();
+                alert('请检查表单填写是否正确：\n1. 用户名格式正确（3-20个字母、数字或下划线）\n2. 密码至少6个字符\n3. 两次输入的密码一致\n4. 密码强度达到中等以上');
+                return false;
+            }
+
+            // 管理员权限确认
+            const userLevel = parseInt(userLevelSelect.value);
+            if (userLevel === 3) {
+                if (!confirm('确定要创建超级管理员账号吗？\n\n超级管理员拥有系统所有权限，可以创建任何级别的用户，请谨慎分配。')) {
+                    e.preventDefault();
+                    return false;
+                }
+            } else if (userLevel === 2) {
+                if (!confirm('确定要创建管理员账号吗？\n\n管理员拥有所有权限，可以创建子管理员，请谨慎分配。')) {
+                    e.preventDefault();
+                    return false;
+                }
+            } else if (userLevel === 1) {
+                if (!confirm('确定要创建子管理员账号吗？\n\n子管理员只能授予自己拥有的权限给普通用户，不能创建其他管理员。')) {
+                    e.preventDefault();
+                    return false;
+                }
+            }
+
+            // 最终确认
+            const username = document.getElementById('username-input').value;
+            if (!confirm(`确定要创建用户 "${username}" 吗？`)) {
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        // 页面加载时聚焦到用户名输入框
+        document.addEventListener('DOMContentLoaded', function () {
+            const usernameInput = document.getElementById('username-input');
+            if (usernameInput) {
+                usernameInput.focus();
+            }
+
+            // 初始禁用提交按钮
+            submitBtn.disabled = true;
+        });
+
+        // 用户名格式验证
+        document.getElementById('username-input').addEventListener('blur', function () {
+            const username = this.value;
+            const usernamePattern = /^[a-zA-Z0-9_]{3,20}$/;
+
+            if (username.length > 0 && !usernamePattern.test(username)) {
+                this.style.borderColor = '#dc3545';
+                this.style.boxShadow = '0 0 0 3px rgba(220, 53, 69, 0.1)';
+            } else {
+                this.style.borderColor = '#ddd';
+                this.style.boxShadow = 'none';
+            }
+        });
+    </script>
+</body>
+
+</html>

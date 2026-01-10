@@ -1,0 +1,2213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+	<meta charset="UTF-8">
+	<title>OpenPMS</title>
+	<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+	<style>
+		/* 基础样式 */
+		* {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box;
+		}
+
+		body {
+			font-family: 'Microsoft YaHei', sans-serif;
+			background: #f5f5f5;
+			color: #333;
+		}
+
+		/* 统一的 Header 样式 */
+		.header {
+			background: linear-gradient(135deg, #1e3c72, #2a5298);
+			color: white;
+			padding: 20px 30px;
+			margin-bottom: 30px;
+		}
+
+		.header-top {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			margin-bottom: 10px;
+		}
+
+		.header h1 {
+			font-size: 24px;
+			font-weight: 600;
+			letter-spacing: 0.5px;
+		}
+
+		/* 用户信息区域 - 优化布局 */
+		.user-info {
+			display: flex;
+			align-items: center;
+			gap: 15px;
+			flex-wrap: wrap;
+			justify-content: flex-end;
+			text-align: right;
+		}
+
+		/* 管理员标签 */
+		.admin-badge {
+			background: #ffc107;
+			color: #333;
+			padding: 4px 10px;
+			border-radius: 12px;
+			font-size: 12px;
+			font-weight: 600;
+		}
+
+		/* 日期显示 */
+		.date-display {
+			font-size: 13px;
+			opacity: 0.9;
+			color: rgba(255, 255, 255, 0.9);
+			font-weight: 500;
+		}
+
+		/* 退出登录按钮 - 更新为纯文本样式 */
+		.btn-logout {
+			color: white;
+			text-decoration: none;
+			font-size: 14px;
+			transition: opacity 0.3s;
+			padding: 4px 8px;
+			border-radius: 4px;
+		}
+
+		.btn-logout:hover {
+			opacity: 0.8;
+			background: rgba(255, 255, 255, 0.1);
+		}
+
+		/* 导航栏 */
+		.nav {
+			display: flex;
+			gap: 10px;
+			margin-top: 10px;
+		}
+
+		.nav-btn {
+			background: rgba(255, 255, 255, 0.1);
+			color: white;
+			border: none;
+			padding: 8px 20px;
+			border-radius: 4px;
+			cursor: pointer;
+			text-decoration: none;
+			display: inline-block;
+			font-size: 14px;
+			transition: background 0.3s;
+		}
+
+		.nav-btn:hover {
+			background: rgba(255, 255, 255, 0.2);
+		}
+
+		.nav-btn.active {
+			background: rgba(255, 255, 255, 0.25);
+			font-weight: bold;
+		}
+
+		.container {
+			max-width: 1400px;
+			margin: 0 auto 40px;
+			padding: 0 20px;
+		}
+
+		/* 搜索区域 */
+		.search-box {
+			background: white;
+			padding: 25px;
+			border-radius: 8px;
+			box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+			margin-bottom: 30px;
+		}
+
+		.search-title {
+			font-size: 18px;
+			margin-bottom: 20px;
+			color: #1e3c72;
+			font-weight: bold;
+		}
+
+		.search-row {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 20px;
+			margin-bottom: 15px;
+			align-items: flex-end;
+		}
+
+		.search-group {
+			flex: 1;
+			min-width: 180px;
+		}
+
+		.search-label {
+			display: block;
+			margin-bottom: 8px;
+			font-weight: bold;
+			color: #555;
+		}
+
+		.search-input {
+			width: 100%;
+			padding: 10px 12px;
+			border: 1px solid #ddd;
+			border-radius: 4px;
+			font-size: 14px;
+		}
+
+		.btn-search {
+			background: #2a5298;
+			color: white;
+			border: none;
+			padding: 10px 25px;
+			border-radius: 4px;
+			cursor: pointer;
+			font-size: 15px;
+		}
+
+		.btn-clear {
+			background: #6c757d;
+			color: white;
+			border: none;
+			padding: 10px 25px;
+			border-radius: 4px;
+			cursor: pointer;
+			font-size: 15px;
+			text-decoration: none;
+			display: inline-block;
+		}
+
+		.btn-add {
+			background: #28a745;
+			color: white;
+			border: none;
+			padding: 10px 25px;
+			border-radius: 4px;
+			cursor: pointer;
+			font-size: 15px;
+			text-decoration: none;
+			display: inline-block;
+		}
+
+		/* 统计卡片 */
+		.stats-cards {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+			gap: 20px;
+			margin-bottom: 30px;
+		}
+
+		.stat-card {
+			background: white;
+			padding: 25px;
+			border-radius: 8px;
+			box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+		}
+
+		.stat-title {
+			font-size: 16px;
+			color: #666;
+			margin-bottom: 15px;
+		}
+
+		.stat-number {
+			font-size: 32px;
+			font-weight: bold;
+			color: #2a5298;
+		}
+
+		/* 图表容器 */
+		.chart-container {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+			gap: 30px;
+			margin-bottom: 40px;
+		}
+
+		.chart-box {
+			background: white;
+			padding: 25px;
+			border-radius: 8px;
+			box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+		}
+
+		.chart-title {
+			font-size: 18px;
+			margin-bottom: 20px;
+			color: #1e3c72;
+			font-weight: bold;
+		}
+
+		.chart-wrapper {
+			position: relative;
+			height: 300px;
+		}
+
+		/* 表格区域 */
+		.table-box {
+			background: white;
+			padding: 25px;
+			border-radius: 8px;
+			box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+		}
+
+		.table-header {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			margin-bottom: 20px;
+		}
+
+		.table-title {
+			font-size: 18px;
+			color: #1e3c72;
+			font-weight: bold;
+		}
+
+		.table {
+			width: 100%;
+			border-collapse: collapse;
+			table-layout: fixed;
+			/* 新增：固定表格布局 */
+		}
+
+		.table th {
+			background: #f8f9fa;
+			padding: 15px;
+			text-align: left;
+			font-weight: bold;
+			color: #555;
+			border-bottom: 2px solid #e0e0e0;
+			position: sticky;
+			top: 0;
+			z-index: 10;
+		}
+
+		.table td {
+			padding: 15px;
+			border-bottom: 1px solid #e0e0e0;
+			vertical-align: top;
+		}
+
+		.table tr:hover {
+			background: #f9f9f9;
+		}
+
+		/* 操作按钮容器 - 新增 */
+		.action-buttons {
+			display: flex;
+			gap: 8px;
+			flex-wrap: nowrap;
+			/* 防止换行 */
+			justify-content: flex-start;
+		}
+
+		.btn-edit,
+		.btn-delete {
+			padding: 6px 12px;
+			border-radius: 4px;
+			cursor: pointer;
+			text-decoration: none;
+			display: inline-block;
+			font-size: 13px;
+			border: 1px solid transparent;
+			transition: all 0.2s ease;
+			white-space: nowrap;
+			/* 防止文本换行 */
+			min-width: 50px;
+			/* 设置最小宽度 */
+			text-align: center;
+		}
+
+		.btn-edit {
+			background: #007bff;
+			color: white;
+			border-color: #0069d9;
+		}
+
+		.btn-delete {
+			background: #dc3545;
+			color: white;
+			border-color: #c82333;
+		}
+
+		.btn-edit:hover {
+			background: #0056b3;
+			border-color: #0056b3;
+			transform: translateY(-1px);
+			box-shadow: 0 2px 4px rgba(0, 123, 255, 0.2);
+		}
+
+		.btn-delete:hover {
+			background: #c82333;
+			border-color: #bd2130;
+			transform: translateY(-1px);
+			box-shadow: 0 2px 4px rgba(220, 53, 69, 0.2);
+		}
+
+		/* 分页 */
+		.pagination {
+			display: flex;
+			justify-content: center;
+			margin-top: 30px;
+			gap: 10px;
+		}
+
+		.page-link {
+			padding: 8px 15px;
+			border: 1px solid #ddd;
+			border-radius: 4px;
+			text-decoration: none;
+			color: #2a5298;
+		}
+
+		.page-link:hover {
+			background: #f0f0f0;
+		}
+
+		.page-link.active {
+			background: #2a5298;
+			color: white;
+			border-color: #2a5298;
+		}
+
+		/* 消息提示 */
+		.flash-messages {
+			margin-bottom: 20px;
+		}
+
+		.flash {
+			padding: 12px 20px;
+			border-radius: 4px;
+			margin-bottom: 10px;
+		}
+
+		.flash.success {
+			background: #d4edda;
+			color: #155724;
+			border-left: 4px solid #28a745;
+		}
+
+		.flash.danger {
+			background: #f8d7da;
+			color: #721c24;
+			border-left: 4px solid #dc3545;
+		}
+
+		.flash.warning {
+			background: #fff3cd;
+			color: #856404;
+			border-left: 4px solid #ffc107;
+		}
+
+		/* 空状态 */
+		.empty-state {
+			text-align: center;
+			padding: 50px 20px;
+			color: #666;
+		}
+
+		.empty-icon {
+			font-size: 48px;
+			margin-bottom: 20px;
+		}
+
+		/* 筛选控件 */
+		.filter-controls {
+			display: flex;
+			gap: 10px;
+			align-items: center;
+		}
+
+		.filter-select {
+			padding: 5px 10px;
+			border: 1px solid #ddd;
+			border-radius: 4px;
+			background: white;
+		}
+
+		.custom-date-range {
+			display: none;
+			gap: 10px;
+			align-items: center;
+			margin-top: 10px;
+		}
+
+		.custom-date-range.active {
+			display: flex;
+		}
+
+		/* 智能图例容器 */
+		.smart-legend-container {
+			position: relative;
+			margin-top: 15px;
+			border-top: 1px solid #eee;
+			padding-top: 15px;
+		}
+
+		.legend-header {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			margin-bottom: 10px;
+			cursor: pointer;
+			padding: 8px 12px;
+			background: #f8f9fa;
+			border-radius: 4px;
+			transition: background 0.2s;
+		}
+
+		.legend-header:hover {
+			background: #e9ecef;
+		}
+
+		.legend-title {
+			font-weight: bold;
+			color: #555;
+			font-size: 14px;
+		}
+
+		.legend-toggle {
+			font-size: 12px;
+			color: #2a5298;
+			display: flex;
+			align-items: center;
+			gap: 5px;
+		}
+
+		.legend-toggle-icon {
+			transition: transform 0.3s;
+		}
+
+		.legend-toggle.collapsed .legend-toggle-icon {
+			transform: rotate(-90deg);
+		}
+
+		/* 图例搜索框 */
+		.legend-search {
+			margin-bottom: 10px;
+			position: relative;
+		}
+
+		.legend-search input {
+			width: 100%;
+			padding: 8px 12px 8px 32px;
+			border: 1px solid #ddd;
+			border-radius: 4px;
+			font-size: 13px;
+		}
+
+		.legend-search-icon {
+			position: absolute;
+			left: 10px;
+			top: 50%;
+			transform: translateY(-50%);
+			color: #999;
+			font-size: 14px;
+		}
+
+		.legend-clear-search {
+			position: absolute;
+			right: 10px;
+			top: 50%;
+			transform: translateY(-50%);
+			background: none;
+			border: none;
+			color: #999;
+			cursor: pointer;
+			font-size: 16px;
+			padding: 0;
+			width: 20px;
+			height: 20px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+
+		.legend-clear-search:hover {
+			color: #666;
+		}
+
+		/* 智能图例内容 */
+		.legend-content {
+			max-height: 150px;
+			overflow-y: auto;
+			padding: 10px;
+			background: #f9f9f9;
+			border-radius: 4px;
+			transition: max-height 0.3s ease;
+		}
+
+		.legend-content.collapsed {
+			max-height: 0;
+			padding: 0;
+			overflow: hidden;
+		}
+
+		.legend-items {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 8px;
+		}
+
+		/* 智能分组 - 当项目过多时自动换行并限制高度 */
+		.legend-grouped {
+			display: grid;
+			grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+			gap: 8px;
+		}
+
+		/* 图例项 */
+		.legend-item-smart {
+			display: flex;
+			align-items: center;
+			gap: 6px;
+			padding: 4px 8px;
+			background: white;
+			border: 1px solid #e0e0e0;
+			border-radius: 4px;
+			font-size: 12px;
+			cursor: pointer;
+			transition: all 0.2s;
+			user-select: none;
+		}
+
+		.legend-item-smart:hover {
+			background: #f0f0f0;
+			transform: translateY(-1px);
+		}
+
+		.legend-item-smart.hidden {
+			opacity: 0.5;
+			text-decoration: line-through;
+		}
+
+		.legend-item-smart.highlighted {
+			background: #e3f2fd;
+			border-color: #2196f3;
+			box-shadow: 0 2px 4px rgba(33, 150, 243, 0.1);
+		}
+
+		.legend-color-smart {
+			width: 12px;
+			height: 12px;
+			border-radius: 2px;
+			flex-shrink: 0;
+		}
+
+		.legend-text {
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			max-width: 120px;
+		}
+
+		/* 图例计数器 */
+		.legend-counter {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			min-width: 20px;
+			height: 20px;
+			padding: 0 6px;
+			background: #2a5298;
+			color: white;
+			border-radius: 10px;
+			font-size: 11px;
+			margin-left: 8px;
+		}
+
+		/* 图例分页（当型号极多时） */
+		.legend-pagination {
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			gap: 10px;
+			margin-top: 10px;
+			padding-top: 10px;
+			border-top: 1px solid #eee;
+		}
+
+		.legend-page-btn {
+			padding: 4px 12px;
+			border: 1px solid #ddd;
+			background: white;
+			border-radius: 4px;
+			cursor: pointer;
+			font-size: 12px;
+		}
+
+		.legend-page-btn:hover:not(:disabled) {
+			background: #f0f0f0;
+		}
+
+		.legend-page-btn:disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
+		}
+
+		.legend-page-info {
+			font-size: 12px;
+			color: #666;
+		}
+
+		/* 图例操作按钮 */
+		.legend-actions {
+			display: flex;
+			gap: 8px;
+			margin-top: 10px;
+		}
+
+		.legend-action-btn {
+			padding: 4px 12px;
+			border: 1px solid #ddd;
+			background: white;
+			border-radius: 4px;
+			cursor: pointer;
+			font-size: 12px;
+			color: #555;
+		}
+
+		.legend-action-btn:hover {
+			background: #f0f0f0;
+		}
+
+		/* 针对图表的调整 - 当图例收起时给图表更多空间 */
+		.chart-wrapper.with-smart-legend {
+			height: 350px;
+			/* 增加图表高度 */
+		}
+
+		/* 图表优化样式 */
+		.chart-wrapper {
+			position: relative;
+			height: 300px;
+		}
+
+		.chart-wrapper canvas {
+			max-height: 100%;
+			width: 100% !important;
+		}
+
+		/* 表格列宽优化 */
+		.table th:nth-child(1),
+		/* 序号 */
+		.table td:nth-child(1) {
+			width: 60px;
+		}
+
+		.table th:nth-child(2),
+		/* 产品代码 */
+		.table td:nth-child(2) {
+			width: 120px;
+		}
+
+		.table th:nth-child(3),
+		/* 生产工序 */
+		.table td:nth-child(3) {
+			width: 120px;
+		}
+
+		.table th:nth-child(4),
+		/* 下一工序 */
+		.table td:nth-child(4) {
+			width: 120px;
+		}
+
+		.table th:nth-child(5),
+		/* 生产数量 */
+		.table td:nth-child(5) {
+			width: 100px;
+			text-align: right;
+		}
+
+		.table th:nth-child(6),
+		/* 操作员 */
+		.table td:nth-child(6) {
+			width: 120px;
+		}
+
+		.table th:nth-child(7),
+		/* 备注 */
+		.table td:nth-child(7) {
+			width: 180px;
+		}
+
+		.table th:nth-child(8),
+		/* 创建者 */
+		.table td:nth-child(8) {
+			width: 100px;
+		}
+
+		.table th:nth-child(9),
+		/* 创建时间 */
+		.table td:nth-child(9) {
+			width: 150px;
+		}
+
+		.table th:nth-child(10),
+		/* 操作 */
+		.table td:nth-child(10) {
+			width: 130px;
+			text-align: center;
+		}
+
+		/* 表格滚动区域 */
+		.table-scroll {
+			overflow-x: auto;
+			max-width: 100%;
+			margin-bottom: 20px;
+		}
+
+		/* 响应式调整 */
+		@media (max-width: 1200px) {
+			.chart-container {
+				grid-template-columns: 1fr;
+			}
+
+			.table th,
+			.table td {
+				padding: 12px 10px;
+				font-size: 14px;
+			}
+		}
+
+		@media (max-width: 768px) {
+			.header {
+				padding: 15px 20px;
+			}
+
+			.header-top {
+				flex-direction: column;
+				align-items: flex-start;
+				gap: 15px;
+				margin-bottom: 15px;
+			}
+
+			.header h1 {
+				font-size: 20px;
+			}
+
+			.user-info {
+				justify-content: flex-start;
+				width: 100%;
+				gap: 10px;
+			}
+
+			.date-display {
+				font-size: 12px;
+				order: -1; /* 移动端将日期放在最前面 */
+				width: 100%;
+				margin-bottom: 5px;
+			}
+
+			.container {
+				padding: 0 15px;
+			}
+
+			.search-row {
+				flex-direction: column;
+			}
+
+			.search-group {
+				width: 100%;
+			}
+
+			.chart-container {
+				grid-template-columns: 1fr;
+			}
+
+			.nav {
+				flex-wrap: wrap;
+			}
+
+			.filter-controls {
+				flex-wrap: wrap;
+			}
+
+			.legend-grouped {
+				grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+			}
+
+			.legend-content {
+				max-height: 120px;
+			}
+
+			/* 移动端表格优化 */
+			.table-box {
+				padding: 15px;
+			}
+
+			.table-header {
+				flex-direction: column;
+				align-items: flex-start;
+				gap: 10px;
+			}
+
+			.table th,
+			.table td {
+				padding: 10px 8px;
+				font-size: 13px;
+			}
+
+			.action-buttons {
+				flex-direction: column;
+				gap: 5px;
+			}
+
+			.btn-edit,
+			.btn-delete {
+				width: 100%;
+			}
+		}
+
+		@media (max-width: 480px) {
+			.user-info {
+				flex-direction: column;
+				align-items: flex-start;
+				gap: 8px;
+			}
+
+			.btn-logout {
+				align-self: flex-end;
+			}
+		}
+
+		/* 打印优化 */
+		@media print {
+
+			.header,
+			.nav,
+			.search-box,
+			.stats-cards,
+			.chart-container {
+				display: none;
+			}
+
+			.container {
+				max-width: 100%;
+				margin: 0;
+				padding: 0;
+			}
+
+			.table-box {
+				box-shadow: none;
+				padding: 0;
+			}
+		}
+
+		.legend-item-smart.no-data {
+			opacity: 0.4 !important;
+			cursor: not-allowed !important;
+		}
+
+		.legend-item-smart.no-data:hover {
+			transform: none !important;
+			background: white !important;
+			border-color: #e0e0e0 !important;
+			box-shadow: none !important;
+		}
+
+		.legend-item-smart.no-data .legend-color-smart {
+			opacity: 0.5;
+		}
+
+		/* 可选：在图表容器中添加一个提示 */
+		.chart-wrapper::after {
+			display: block;
+			font-size: 12px;
+			color: #666;
+			margin-top: 10px;
+			text-align: right;
+		}
+
+		/* 编辑状态指示器 */
+		.edit-indicator {
+			display: inline-flex;
+			align-items: center;
+			gap: 5px;
+			background: rgba(0, 123, 255, 0.1);
+			color: #007bff;
+			padding: 4px 10px;
+			border-radius: 12px;
+			font-size: 12px;
+			margin-left: 10px;
+		}
+	</style>
+</head>
+
+<body>
+	<div class="header">
+		<div class="header-top">
+			<h1>OpenPMS</h1>
+			<div class="user-info">
+				<span>欢迎，{{ current_user.username }}</span> {% if current_user.is_admin %} <span
+					class="admin-badge">管理员</span> {% endif %} <span class="date-display">今天是
+					{{ today.strftime('%Y年%m月%d日') }}，星期{{ ['一','二','三','四','五','六','日'][today.weekday()] }}</span>
+				<a href="{{ url_for('logout') }}" class="btn-logout">退出登录</a>
+			</div>
+		</div>
+		<div class="nav">
+			<a href="{{ url_for('index') }}" class="nav-btn active">生产记录</a>
+
+			{% if has_perm('add_record') %}
+			<a href="{{ url_for('add_record') }}" class="nav-btn">添加记录</a>
+			{% endif %}
+
+			{% if has_perm('manage_process') %}
+			<a href="{{ url_for('process_list') }}" class="nav-btn">工序管理</a>
+			{% endif %}
+
+			{% if has_perm('manage_operator') %}
+			<a href="{{ url_for('operator_list') }}" class="nav-btn">操作员管理</a>
+			{% endif %}
+
+			{% if has_perm('manage_users') %}
+			<a href="{{ url_for('user_list') }}" class="nav-btn">用户管理</a>
+			{% endif %}
+		</div>
+	</div>
+	<div class="container">
+		<!-- 消息提示 -->
+		<div class="flash-messages"> {% with messages = get_flashed_messages(with_categories=true) %} {% if messages %} {% for category, msg in messages %} <div class="flash {{ category }}">{{ msg }}</div> {% endfor %} {% endif %} {% endwith %} </div>
+		<!-- 搜索区域 -->
+		<div class="search-box">
+			<div class="search-title">生产记录查询</div>
+			<form method="get" action="{{ url_for('index') }}">
+				<div class="search-row">
+					<div class="search-group">
+						<label class="search-label">产品代码</label>
+						<input type="text" name="search_code" value="{{ search_code }}" class="search-input"
+							placeholder="输入产品代码">
+					</div>
+					<div class="search-group">
+						<label class="search-label">生产工序</label>
+						<input type="text" name="search_process" value="{{ search_process }}" class="search-input"
+							placeholder="输入生产工序">
+					</div>
+					<div class="search-group">
+						<label class="search-label">操作员</label>
+						<input type="text" name="search_operator" value="{{ search_operator }}" class="search-input"
+							placeholder="输入操作员姓名">
+					</div>
+					<div class="search-group">
+						<label class="search-label">创建者</label>
+						<input type="text" name="search_creator" value="{{ search_creator }}" class="search-input"
+							placeholder="输入创建者账号">
+					</div>
+				</div>
+				<div class="search-row">
+					<div class="search-group">
+						<label class="search-label">下一工序</label>
+						<input type="text" name="search_next_process" value="{{ search_next_process }}"
+							class="search-input" placeholder="输入下一工序">
+					</div>
+					<div class="search-group">
+						<label class="search-label">最小数量</label>
+						<input type="number" name="min_number" value="{{ min_number }}" class="search-input"
+							placeholder="最小数量" min="0">
+					</div>
+					<div class="search-group">
+						<label class="search-label">最大数量</label>
+						<input type="number" name="max_number" value="{{ max_number }}" class="search-input"
+							placeholder="最大数量" min="0">
+					</div>
+					<div class="search-group">
+						<!-- 占位，保持布局 -->
+						<label class="search-label" style="visibility: hidden;">占位</label>
+						<div style="height: 38px;"></div>
+					</div>
+				</div>
+				<div class="search-row">
+					<div class="search-group">
+						<label class="search-label">开始日期</label>
+						<input type="date" name="start_date" value="{{ start_date }}" class="search-input">
+					</div>
+					<div class="search-group">
+						<label class="search-label">结束日期</label>
+						<input type="date" name="end_date" value="{{ end_date }}" class="search-input">
+					</div>
+					<div class="search-group" style="flex: 0 0 auto;">
+						<label class="search-label" style="visibility: hidden;">按钮</label>
+						<div style="display: flex; gap: 10px;">
+							<button type="submit" class="btn-search">查询</button>
+							<a href="{{ url_for('index') }}" class="btn-clear">清除条件</a>
+							<a href="{{ url_for('add_record') }}" class="btn-add">+ 添加记录</a>
+						</div>
+					</div>
+				</div>
+			</form>
+		</div>
+		<!-- 今日统计卡片 -->
+		<div class="stats-cards">
+			<div class="stat-card">
+				<div class="stat-title">总产量</div>
+				<div class="stat-number" id="total-today">{{ total_today }}</div>
+			</div>
+			<div class="stat-card">
+				<div class="stat-title">活跃工序数</div>
+				<div class="stat-number" id="process-count">{{ process_count }}</div>
+			</div>
+			<div class="stat-card">
+				<div class="stat-title">参与操作员</div>
+				<div class="stat-number" id="operator-count">{{ operator_count }}</div>
+			</div>
+		</div>
+		<!-- 图表区域 -->
+		<div class="chart-container">
+			<div class="chart-box">
+				<div class="chart-title">
+					<div style="display: flex; justify-content: space-between; align-items: center;">
+						<span>各工序型号产量分布</span>
+						<div class="filter-controls">
+							<select id="chartPeriod" class="filter-select">
+								<option value="today">今日</option>
+								<option value="week">本周</option>
+								<option value="month">本月</option>
+								<option value="custom">自定义</option>
+							</select>
+							<select id="chartType" class="filter-select">
+								<option value="stacked">堆叠图（按工序）</option>
+								<option value="grouped">分组图（按型号）</option>
+							</select>
+						</div>
+					</div>
+				</div>
+				<div class="custom-date-range" id="customDateRange">
+					<input type="date" id="customStartDate" class="search-input" style="width: auto;">
+					<span>至</span>
+					<input type="date" id="customEndDate" class="search-input" style="width: auto;">
+					<button type="button" id="applyCustomDate" class="btn-search" style="padding: 5px 15px;">应用</button>
+				</div>
+				<!-- 修改图表容器，添加智能图例标识 -->
+				<div class="chart-wrapper with-smart-legend">
+					<canvas id="processChart"></canvas>
+				</div>
+				<!-- 添加智能图例容器 -->
+				<div class="smart-legend-container" id="smartLegendContainer">
+					<div class="legend-header" id="legendToggle">
+						<div class="legend-title"> 产品型号图例 <span class="legend-counter" id="legendCounter">0</span>
+						</div>
+						<div class="legend-toggle" id="legendToggleBtn">
+							<span class="legend-toggle-icon">▼</span>
+							<span>展开</span>
+						</div>
+					</div>
+					<div class="legend-content collapsed" id="legendContent">
+						<!-- 搜索框 -->
+						<div class="legend-search">
+							<span class="legend-search-icon">🔍</span>
+							<input type="text" id="legendSearch" placeholder="搜索产品型号...">
+							<button class="legend-clear-search" id="clearLegendSearch" style="display: none;">×</button>
+						</div>
+						<!-- 图例项容器 -->
+						<div class="legend-items" id="legendItemsContainer"></div>
+						<!-- 图例分页（当型号过多时显示） -->
+						<div class="legend-pagination" id="legendPagination" style="display: none;">
+							<button class="legend-page-btn" id="prevPageBtn" disabled>上一页</button>
+							<span class="legend-page-info" id="pageInfo">第 1 页 / 共 1 页</span>
+							<button class="legend-page-btn" id="nextPageBtn" disabled>下一页</button>
+						</div>
+						<!-- 图例操作按钮 -->
+						<div class="legend-actions">
+							<button class="legend-action-btn" id="showAllBtn">显示全部</button>
+							<button class="legend-action-btn" id="hideAllBtn">隐藏全部</button>
+							<button class="legend-action-btn" id="resetLegendBtn">重置</button>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="chart-box">
+				<div class="chart-title">
+					<div style="display: flex; justify-content: space-between; align-items: center;">
+						<span>操作员产量排名（按工序）</span>
+						<div class="filter-controls">
+							<select id="operatorProcessSelect" class="filter-select">
+								<option value="all">所有工序</option> {% for process in process_list %} <option
+									value="{{ process }}">{{ process }}</option> {% endfor %}
+							</select>
+						</div>
+					</div>
+				</div>
+				<div class="chart-wrapper">
+					<canvas id="operatorChart"></canvas>
+				</div>
+			</div>
+		</div>
+		<!-- 工序详情表格 --> {% if process_stats %} <div class="table-box" style="margin-bottom: 30px;">
+			<div class="table-header">
+				<div class="table-title">工序产量详情</div>
+				<div style="color: #666;">共 {{ process_stats|length }} 个工序</div>
+			</div>
+			<table class="table">
+				<thead>
+					<tr>
+						<th>工序名称</th>
+						<th>产品种类</th>
+						<th>总产量</th>
+						<th>操作员人数</th>
+						<th>平均每人产量</th>
+						<th>最高产量产品</th>
+					</tr>
+				</thead>
+				<tbody> {% for stat in process_stats %} <tr>
+						<td><strong>{{ stat.process_name }}</strong></td>
+						<td>{{ stat.product_count }} 种</td>
+						<td>{{ stat.total_quantity }}</td>
+						<td>{{ stat.operator_count }} 人</td>
+						<td>{{ stat.avg_per_operator|round(1) }}</td>
+						<td>{{ stat.top_product }} ({{ stat.top_product_qty }})</td>
+					</tr> {% endfor %} </tbody>
+			</table>
+		</div> {% endif %} <!-- 生产记录表格 -->
+		<div class="table-box">
+			<div class="table-header">
+				<div class="table-title">生产记录列表</div>
+				<div style="color: #666;">共 {{ records|length }} 条记录</div>
+			</div> {% if records %} <div class="table-scroll">
+				<table class="table">
+					<thead>
+						<tr>
+							<th>序号</th>
+							<th>产品代码</th>
+							<th>生产工序</th>
+							<th>下一工序</th>
+							<th>生产数量</th>
+							<th>操作员</th>
+							<th>备注</th>
+							<th>创建者</th>
+							<th>创建时间</th>
+							<!-- 移除"更新时间"列 -->
+							<th>操作</th>
+						</tr>
+					</thead>
+					<tbody> {% for record in records %} <tr>
+							<td>{{ loop.index }}</td>
+							<td>{{ record.product_code }}</td>
+							<td>{{ record.process }}</td>
+							<td>{{ record.next_process or '-' }}</td>
+							<td>{{ record.number }}</td>
+							<td>{{ record.operators }}</td>
+							<td> {% if record.note %} <span title="{{ record.note }}"
+									style="cursor: help; color: #666;"> {{ record.note[:20] }}{% if record.note|length >
+									20 %}...{% endif %} </span> {% else %} - {% endif %} </td>
+							<td>{{ record.creator }}</td>
+							<td>{{ record.create_time.strftime('%Y-%m-%d %H:%M') }}</td>
+							<!-- 移除"更新时间"单元格 -->
+							<td>
+								<div class="action-buttons">
+									<a href="{{ url_for('edit_record', id=record.id) }}" class="btn-edit">编辑</a>
+									<a href="{{ url_for('delete_record', id=record.id) }}" class="btn-delete"
+										onclick="return confirm('确定要删除这条记录吗？')">删除</a>
+								</div>
+							</td>
+						</tr> {% endfor %} </tbody>
+				</table>
+			</div> {% else %} <div class="empty-state">
+				<div class="empty-icon">📊</div>
+				<h3>暂无生产记录</h3>
+				<p>没有找到符合条件的生产记录，请尝试其他搜索条件或添加新记录</p>
+			</div> {% endif %}
+		</div>
+		<script>
+			document.addEventListener('DOMContentLoaded', function () {
+				// DOM元素
+				let processCtx = document.getElementById('processChart');
+				let operatorCtx = document.getElementById('operatorChart');
+				const periodSelect = document.getElementById('chartPeriod');
+				const chartTypeSelect = document.getElementById('chartType');
+				const operatorSelect = document.getElementById('operatorProcessSelect');
+				const customDateRange = document.getElementById('customDateRange');
+				const customStartDate = document.getElementById('customStartDate');
+				const customEndDate = document.getElementById('customEndDate');
+				const applyCustomDate = document.getElementById('applyCustomDate');
+
+				// 智能图例相关变量
+				let currentLegendItems = [];
+				let currentPage = 1;
+				const itemsPerPage = 20;
+				let currentSearchTerm = '';
+				let hiddenItems = new Set(); // 存储隐藏的型号索引
+				let highlightedItem = null; // 当前高亮的型号
+
+				// 智能图例DOM元素
+				const legendToggle = document.getElementById('legendToggle');
+				const legendToggleBtn = document.getElementById('legendToggleBtn');
+				const legendContent = document.getElementById('legendContent');
+				const legendCounter = document.getElementById('legendCounter');
+				const legendSearch = document.getElementById('legendSearch');
+				const clearLegendSearch = document.getElementById('clearLegendSearch');
+				const legendItemsContainer = document.getElementById('legendItemsContainer');
+				const legendPagination = document.getElementById('legendPagination');
+				const prevPageBtn = document.getElementById('prevPageBtn');
+				const nextPageBtn = document.getElementById('nextPageBtn');
+				const pageInfo = document.getElementById('pageInfo');
+				const showAllBtn = document.getElementById('showAllBtn');
+				const hideAllBtn = document.getElementById('hideAllBtn');
+				const resetLegendBtn = document.getElementById('resetLegendBtn');
+
+				// 设置默认日期为今天
+				const today = new Date().toISOString().split('T')[0];
+				customStartDate.value = today;
+				customEndDate.value = today;
+
+				let processChart = null;
+				let operatorChart = null;
+				let customStart = today;
+				let customEnd = today;
+
+				// 保存原始图表容器
+				const processChartContainer = processCtx.parentElement;
+				const operatorChartContainer = operatorCtx.parentElement;
+
+				// 智能图例功能初始化
+				function initSmartLegend() {
+					// 图例切换
+					legendToggle.addEventListener('click', toggleLegend);
+
+					// 搜索功能
+					legendSearch.addEventListener('input', handleLegendSearch);
+					clearLegendSearch.addEventListener('click', clearSearch);
+
+					// 分页按钮
+					prevPageBtn.addEventListener('click', goToPrevPage);
+					nextPageBtn.addEventListener('click', goToNextPage);
+
+					// 操作按钮
+					showAllBtn.addEventListener('click', showAllItems);
+					hideAllBtn.addEventListener('click', hideAllItems);
+					resetLegendBtn.addEventListener('click', resetLegend);
+				}
+
+				// 切换图例展开/收起
+				function toggleLegend() {
+					const isCollapsed = legendContent.classList.contains('collapsed');
+
+					if (isCollapsed) {
+						legendContent.classList.remove('collapsed');
+						legendToggleBtn.innerHTML = '<span class="legend-toggle-icon">▲</span><span>收起</span>';
+						legendToggleBtn.classList.remove('collapsed');
+					} else {
+						legendContent.classList.add('collapsed');
+						legendToggleBtn.innerHTML = '<span class="legend-toggle-icon">▼</span><span>展开</span>';
+						legendToggleBtn.classList.add('collapsed');
+					}
+				}
+
+				// 更新智能图例
+				function updateSmartLegend(models, colors, chartInstance) {
+					currentLegendItems = models.map((model, index) => ({
+						id: index,
+						label: model,
+						color: colors[index],
+						visible: true
+					}));
+
+					// 更新计数器
+					legendCounter.textContent = models.length;
+
+					// 重置状态
+					currentPage = 1;
+					currentSearchTerm = '';
+					hiddenItems.clear();
+					highlightedItem = null;
+					legendSearch.value = '';
+					clearLegendSearch.style.display = 'none';
+
+					// 渲染图例
+					renderLegendItems(chartInstance);
+				}
+
+				// 渲染图例项
+				function renderLegendItems(chartInstance) {
+					// 清空容器
+					legendItemsContainer.innerHTML = '';
+
+					// 过滤和分页逻辑
+					let filteredItems = currentLegendItems;
+
+					// 应用搜索过滤
+					if (currentSearchTerm) {
+						filteredItems = filteredItems.filter(item =>
+							item.label.toLowerCase().includes(currentSearchTerm.toLowerCase())
+						);
+					}
+
+					// 应用隐藏过滤
+					filteredItems = filteredItems.filter(item => !hiddenItems.has(item.id));
+
+					// 检查每个项目是否有非零数据
+					filteredItems = filteredItems.map(item => {
+						let hasNonZeroData = false;
+						if (chartInstance && chartInstance.data.datasets[item.id]) {
+							const dataset = chartInstance.data.datasets[item.id];
+							hasNonZeroData = dataset.data.some(value => value > 0);
+						}
+						return {
+							...item,
+							hasNonZeroData: hasNonZeroData
+						};
+					});
+
+					// 将有数据的项目放在前面
+					filteredItems.sort((a, b) => {
+						if (a.hasNonZeroData && !b.hasNonZeroData) return -1;
+						if (!a.hasNonZeroData && b.hasNonZeroData) return 1;
+						return 0;
+					});
+
+					// 计算分页
+					const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+					const startIndex = (currentPage - 1) * itemsPerPage;
+					const endIndex = startIndex + itemsPerPage;
+					const pagedItems = filteredItems.slice(startIndex, endIndex);
+
+					// 更新分页控件
+					updatePagination(totalPages, filteredItems.length);
+
+					// 渲染图例项
+					pagedItems.forEach(item => {
+						const legendItem = createLegendItemElement(item, chartInstance);
+						legendItemsContainer.appendChild(legendItem);
+					});
+
+					// 如果项目很多，使用分组布局
+					if (filteredItems.length > 30) {
+						legendItemsContainer.classList.add('legend-grouped');
+					} else {
+						legendItemsContainer.classList.remove('legend-grouped');
+					}
+				}
+
+				// 创建图例项元素
+				function createLegendItemElement(item, chartInstance) {
+					const div = document.createElement('div');
+					div.className = 'legend-item-smart';
+					if (hiddenItems.has(item.id)) {
+						div.classList.add('hidden');
+					}
+					if (highlightedItem === item.id) {
+						div.classList.add('highlighted');
+					}
+
+					// 检查该数据集是否有非零数据
+					let hasNonZeroData = false;
+					if (chartInstance && chartInstance.data.datasets[item.id]) {
+						const dataset = chartInstance.data.datasets[item.id];
+						hasNonZeroData = dataset.data.some(value => value > 0);
+					}
+
+					// 如果没有非零数据，添加特殊样式
+					if (!hasNonZeroData) {
+						div.classList.add('no-data');
+						div.style.opacity = '0.4';
+						div.style.cursor = 'not-allowed';
+						div.title = '该产品在当前时间段内产量为零';
+					}
+
+					div.innerHTML = `
+			            <div class="legend-color-smart" style="background-color: ${item.color}"></div>
+			            <div class="legend-text" title="${item.label}">${item.label}</div>
+			        `;
+
+					// 点击事件 - 切换显示/隐藏
+					div.addEventListener('click', function (e) {
+						e.stopPropagation();
+
+						// 如果没有非零数据，不执行任何操作
+						if (!hasNonZeroData) {
+							return;
+						}
+
+						if (e.ctrlKey || e.metaKey) {
+							// Ctrl+点击：高亮/取消高亮
+							toggleHighlight(item.id, chartInstance);
+						} else {
+							// 普通点击：显示/隐藏
+							toggleItemVisibility(item.id, chartInstance);
+						}
+					});
+
+					// 鼠标悬停事件 - 临时高亮
+					div.addEventListener('mouseenter', function () {
+						// 如果没有非零数据，不执行高亮
+						if (!hasNonZeroData) {
+							return;
+						}
+						if (!hiddenItems.has(item.id)) {
+							highlightChartSeries(item.id, chartInstance, true);
+						}
+					});
+
+					div.addEventListener('mouseleave', function () {
+						// 如果没有非零数据，不执行取消高亮
+						if (!hasNonZeroData) {
+							return;
+						}
+						if (highlightedItem !== item.id) {
+							highlightChartSeries(item.id, chartInstance, false);
+						}
+					});
+
+					return div;
+				}
+
+				// 切换项目可见性
+				function toggleItemVisibility(itemId, chartInstance) {
+					if (hiddenItems.has(itemId)) {
+						hiddenItems.delete(itemId);
+						showChartSeries(itemId, chartInstance);
+					} else {
+						hiddenItems.add(itemId);
+						hideChartSeries(itemId, chartInstance);
+					}
+
+					// 重新渲染图例
+					renderLegendItems(chartInstance);
+
+					// 更新图表
+					chartInstance.update();
+				}
+
+				// 切换高亮状态
+				function toggleHighlight(itemId, chartInstance) {
+					if (highlightedItem === itemId) {
+						highlightedItem = null;
+						// 取消所有高亮
+						chartInstance.data.datasets.forEach((dataset, index) => {
+							if (dataset.borderWidth === 3) {
+								dataset.borderWidth = 1;
+								dataset.backgroundColor = dataset.backgroundColor.replace('1)', '0.7)');
+							}
+						});
+					} else {
+						highlightedItem = itemId;
+						// 高亮对应系列
+						highlightChartSeries(itemId, chartInstance, true);
+					}
+
+					chartInstance.update();
+					renderLegendItems(chartInstance);
+				}
+
+				// 高亮图表系列
+				function highlightChartSeries(itemId, chartInstance, highlight) {
+					if (chartInstance && chartInstance.data.datasets[itemId]) {
+						if (highlight) {
+							chartInstance.data.datasets[itemId].borderWidth = 3;
+							chartInstance.data.datasets[itemId].backgroundColor =
+								chartInstance.data.datasets[itemId].backgroundColor.replace('0.7)', '1)');
+						} else {
+							chartInstance.data.datasets[itemId].borderWidth = 1;
+							chartInstance.data.datasets[itemId].backgroundColor =
+								chartInstance.data.datasets[itemId].backgroundColor.replace('1)', '0.7)');
+						}
+					}
+				}
+
+				// 隐藏图表系列
+				function hideChartSeries(itemId, chartInstance) {
+					if (chartInstance && chartInstance.data.datasets[itemId]) {
+						chartInstance.setDatasetVisibility(itemId, false);
+					}
+				}
+
+				// 显示图表系列
+				function showChartSeries(itemId, chartInstance) {
+					if (chartInstance && chartInstance.data.datasets[itemId]) {
+						chartInstance.setDatasetVisibility(itemId, true);
+					}
+				}
+
+				// 更新分页控件
+				function updatePagination(totalPages, totalItems) {
+					if (totalPages > 1) {
+						legendPagination.style.display = 'flex';
+						prevPageBtn.disabled = currentPage === 1;
+						nextPageBtn.disabled = currentPage === totalPages;
+						pageInfo.textContent = `第 ${currentPage} 页 / 共 ${totalPages} 页 (${totalItems} 项)`;
+					} else {
+						legendPagination.style.display = 'none';
+					}
+				}
+
+				// 搜索处理
+				function handleLegendSearch(e) {
+					currentSearchTerm = e.target.value;
+					currentPage = 1;
+
+					if (currentSearchTerm) {
+						clearLegendSearch.style.display = 'block';
+					} else {
+						clearLegendSearch.style.display = 'none';
+					}
+
+					// 重新渲染图例
+					if (processChart) {
+						renderLegendItems(processChart);
+					}
+				}
+
+				// 清除搜索
+				function clearSearch() {
+					legendSearch.value = '';
+					currentSearchTerm = '';
+					clearLegendSearch.style.display = 'none';
+					currentPage = 1;
+
+					if (processChart) {
+						renderLegendItems(processChart);
+					}
+				}
+
+				// 分页导航
+				function goToPrevPage() {
+					if (currentPage > 1) {
+						currentPage--;
+						if (processChart) {
+							renderLegendItems(processChart);
+						}
+					}
+				}
+
+				function goToNextPage() {
+					const totalItems = currentSearchTerm
+						? currentLegendItems.filter(item =>
+							item.label.toLowerCase().includes(currentSearchTerm.toLowerCase()) &&
+							!hiddenItems.has(item.id)
+						).length
+						: currentLegendItems.filter(item => !hiddenItems.has(item.id)).length;
+
+					const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+					if (currentPage < totalPages) {
+						currentPage++;
+						if (processChart) {
+							renderLegendItems(processChart);
+						}
+					}
+				}
+
+				// 显示所有项目
+				function showAllItems() {
+					hiddenItems.clear();
+					if (processChart) {
+						// 显示所有数据集
+						processChart.data.datasets.forEach((dataset, index) => {
+							processChart.setDatasetVisibility(index, true);
+						});
+						processChart.update();
+						renderLegendItems(processChart);
+					}
+				}
+
+				// 隐藏所有项目
+				function hideAllItems() {
+					if (processChart) {
+						// 隐藏所有数据集，除了第一个
+						processChart.data.datasets.forEach((dataset, index) => {
+							if (index > 0) { // 保留第一个可见
+								hiddenItems.add(index);
+								processChart.setDatasetVisibility(index, false);
+							}
+						});
+						processChart.update();
+						renderLegendItems(processChart);
+					}
+				}
+
+				// 重置图例
+				function resetLegend() {
+					hiddenItems.clear();
+					highlightedItem = null;
+					currentSearchTerm = '';
+					currentPage = 1;
+					legendSearch.value = '';
+					clearLegendSearch.style.display = 'none';
+
+					if (processChart) {
+						// 重置所有数据集可见性
+						processChart.data.datasets.forEach((dataset, index) => {
+							processChart.setDatasetVisibility(index, true);
+							dataset.borderWidth = 1;
+							dataset.backgroundColor = dataset.backgroundColor.replace('1)', '0.7)');
+						});
+						processChart.update();
+
+						// 重新渲染图例
+						renderLegendItems(processChart);
+					}
+				}
+
+				// 显示/隐藏自定义日期范围
+				periodSelect.addEventListener('change', function () {
+					if (this.value === 'custom') {
+						customDateRange.classList.add('active');
+					} else {
+						customDateRange.classList.remove('active');
+						loadCharts(this.value, chartTypeSelect.value, operatorSelect.value);
+					}
+				});
+
+				// 图表类型变化
+				chartTypeSelect.addEventListener('change', function () {
+					loadCharts(periodSelect.value, this.value, operatorSelect.value);
+				});
+
+				// 应用自定义日期
+				applyCustomDate.addEventListener('click', function () {
+					if (customStartDate.value && customEndDate.value) {
+						customStart = customStartDate.value;
+						customEnd = customEndDate.value;
+						loadCharts('custom', chartTypeSelect.value, operatorSelect.value);
+					} else {
+						alert('请选择完整的日期范围');
+					}
+				});
+
+				// 工序筛选变化
+				operatorSelect.addEventListener('change', function () {
+					loadOperatorChart(periodSelect.value, this.value);
+				});
+
+				// 颜色生成器 - 优化颜色方案
+				function generateColors(count) {
+					const colors = [];
+					// 优化后的颜色方案，提高对比度
+					const baseColors = [
+						'rgba(42, 82, 152, 0.8)',   // 深蓝色
+						'rgba(40, 167, 69, 0.8)',   // 绿色
+						'rgba(255, 193, 7, 0.8)',   // 黄色
+						'rgba(220, 53, 69, 0.8)',   // 红色
+						'rgba(111, 66, 193, 0.8)',  // 紫色
+						'rgba(253, 126, 20, 0.8)',  // 橙色
+						'rgba(32, 201, 151, 0.8)',  // 青色
+						'rgba(23, 162, 184, 0.8)',  // 青色2
+						'rgba(108, 117, 125, 0.8)', // 灰色
+						'rgba(255, 107, 107, 0.8)', // 珊瑚红
+						'rgba(72, 187, 120, 0.8)',  // 青绿
+						'rgba(237, 137, 54, 0.8)',  // 橙黄
+						'rgba(0, 150, 136, 0.8)',   // 蓝绿色
+						'rgba(233, 30, 99, 0.8)',   // 粉色
+						'rgba(156, 39, 176, 0.8)',  // 深紫色
+						'rgba(96, 125, 139, 0.8)'   // 蓝灰色
+					];
+
+					// 如果颜色不够，生成渐变颜色
+					if (count > baseColors.length) {
+						for (let i = 0; i < count; i++) {
+							const hue = (i * 137.5) % 360; // 使用黄金角度
+							colors.push(`hsla(${hue}, 70%, 60%, 0.8)`);
+						}
+					} else {
+						for (let i = 0; i < count; i++) {
+							colors.push(baseColors[i % baseColors.length]);
+						}
+					}
+					return colors;
+				}
+
+				// 加载图表数据
+				function loadCharts(period, chartType = 'stacked', process = 'all') {
+					loadProcessChart(period, chartType);
+					loadOperatorChart(period, process);
+				}
+
+				// 加载工序型号图表
+				function loadProcessChart(period, chartType = 'stacked') {
+					// 清除之前的空状态
+					clearEmptyState(processChartContainer);
+
+					if (processChart) {
+						processChart.destroy();
+						processChart = null;
+					}
+
+					// 确保canvas可见
+					if (processCtx) {
+						processCtx.style.display = 'block';
+					} else {
+						// 如果canvas丢失，重新获取
+						processCtx = document.getElementById('processChart');
+					}
+
+					let url = `/api/process-model-stats?period=${period}`;
+					if (period === 'custom') {
+						url += `&start_date=${customStart}&end_date=${customEnd}`;
+					}
+
+					fetch(url)
+						.then(response => response.json())
+						.then(data => {
+							if (data.products && data.products.length > 0) {
+								// 准备图表数据
+								const chartData = prepareProcessModelData(data.products, chartType);
+
+								// 创建图表
+								processChart = createProcessModelChart(processCtx, chartData, chartType);
+
+								// 更新统计卡片
+								document.getElementById('total-today').textContent = data.total_today;
+								document.getElementById('process-count').textContent = data.process_count;
+								document.getElementById('operator-count').textContent = data.operator_labels ? data.operator_labels.length : 0;
+							} else {
+								showEmptyState(processChartContainer, '该时间段内暂无生产数据');
+								// 清空图例
+								legendItemsContainer.innerHTML = '';
+								legendCounter.textContent = '0';
+							}
+						})
+						.catch(error => {
+							console.error('加载工序型号图表失败:', error);
+							showEmptyState(processChartContainer, '加载数据失败，请刷新页面重试');
+						});
+				}
+
+				// 准备工序型号数据 - 优化数据处理
+				function prepareProcessModelData(products, chartType) {
+					// 收集所有唯一的工序和型号
+					const processesSet = new Set();
+					const modelsSet = new Set();
+
+					// 按工序和型号分组
+					const dataMap = {};
+
+					products.forEach(product => {
+						processesSet.add(product.process);
+						modelsSet.add(product.product_code);
+
+						const key = `${product.process}|${product.product_code}`;
+						if (!dataMap[key]) {
+							dataMap[key] = 0;
+						}
+						dataMap[key] += product.total_number;
+					});
+
+					const processes = Array.from(processesSet).sort();
+					const models = Array.from(modelsSet).sort();
+
+					// 为每个型号生成颜色
+					const modelColors = {};
+					const colors = generateColors(models.length);
+					models.forEach((model, index) => {
+						modelColors[model] = colors[index];
+					});
+
+					// 构建图表数据
+					if (chartType === 'stacked') {
+						// 堆叠图：每个工序一个数据集，每个型号一个数据点
+						const datasets = [];
+						const filteredModels = [];
+						const filteredColors = [];
+
+						models.forEach((model, index) => {
+							const data = processes.map(process => {
+								const key = `${process}|${model}`;
+								return dataMap[key] || 0;
+							});
+
+							// 检查该型号是否有非零数据
+							const hasNonZeroData = data.some(value => value > 0);
+
+							if (hasNonZeroData) {
+								datasets.push({
+									label: model,
+									data: data,
+									backgroundColor: modelColors[model],
+									borderColor: modelColors[model].replace('0.8', '1'),
+									borderWidth: 1,
+									hoverBorderWidth: 2,
+									borderRadius: 2,
+									hoverBackgroundColor: modelColors[model].replace('0.8', '0.9')
+								});
+								filteredModels.push(model);
+								filteredColors.push(colors[index]);
+							}
+						});
+
+						return {
+							labels: processes,
+							datasets: datasets,
+							models: filteredModels,
+							colors: filteredColors
+						};
+					} else {
+						// 分组图：每个型号一个数据集，每个工序一个数据点
+						const datasets = [];
+						const filteredModels = [];
+						const filteredColors = [];
+
+						models.forEach((model, index) => {
+							const data = processes.map(process => {
+								const key = `${process}|${model}`;
+								return dataMap[key] || 0;
+							});
+
+							// 检查该型号是否有非零数据
+							const hasNonZeroData = data.some(value => value > 0);
+
+							if (hasNonZeroData) {
+								datasets.push({
+									label: model,
+									data: data,
+									backgroundColor: modelColors[model],
+									borderColor: modelColors[model].replace('0.8', '1'),
+									borderWidth: 1,
+									hoverBorderWidth: 2,
+									borderRadius: 2,
+									hoverBackgroundColor: modelColors[model].replace('0.8', '0.9')
+								});
+								filteredModels.push(model);
+								filteredColors.push(colors[index]);
+							}
+						});
+
+						return {
+							labels: processes,
+							datasets: datasets,
+							models: filteredModels,
+							colors: filteredColors
+						};
+					}
+				}
+
+				// 创建工序型号图表（集成智能图例）- 优化图表配置
+				function createProcessModelChart(ctx, chartData, chartType) {
+					const isStacked = chartType === 'stacked';
+
+					const chartInstance = new Chart(ctx, {
+						type: 'bar',
+						data: {
+							labels: chartData.labels,
+							datasets: chartData.datasets
+						},
+						options: {
+							responsive: true,
+							maintainAspectRatio: false,
+							interaction: {
+								intersect: false,
+								mode: 'index'
+							},
+							scales: {
+								x: {
+									stacked: isStacked,
+									title: {
+										display: true,
+										text: '生产工序',
+										font: {
+											size: 14,
+											weight: 'bold'
+										}
+									},
+									grid: {
+										display: false
+									},
+									ticks: {
+										font: {
+											size: 12
+										},
+										maxRotation: 45,
+										minRotation: 0
+									}
+								},
+								y: {
+									stacked: isStacked,
+									beginAtZero: true,
+									title: {
+										display: true,
+										text: '生产数量',
+										font: {
+											size: 14,
+											weight: 'bold'
+										}
+									},
+									ticks: {
+										font: {
+											size: 12
+										},
+										callback: function (value) {
+											return value.toLocaleString();
+										}
+									},
+									grid: {
+										color: 'rgba(0, 0, 0, 0.05)'
+									}
+								}
+							},
+							plugins: {
+								legend: {
+									display: false // 禁用默认图例，使用智能图例
+								},
+								tooltip: {
+									backgroundColor: 'rgba(0, 0, 0, 0.8)',
+									titleFont: {
+										size: 13
+									},
+									bodyFont: {
+										size: 12
+									},
+									padding: 10,
+									cornerRadius: 4,
+									// 关键修改：过滤掉值为0的数据点
+									filter: function (tooltipItem) {
+										return tooltipItem.raw > 0;
+									},
+									callbacks: {
+										label: function (context) {
+											const datasetLabel = context.dataset.label || '';
+											const value = context.parsed.y;
+											return `${datasetLabel}: ${value.toLocaleString()} 件`;
+										},
+										labelColor: function (context) {
+											return {
+												borderColor: context.dataset.borderColor,
+												backgroundColor: context.dataset.backgroundColor,
+												borderWidth: 2,
+												borderRadius: 2
+											};
+										}
+									}
+								}
+							},
+							animation: {
+								duration: 500,
+								easing: 'easeOutQuart'
+							}
+						}
+					});
+
+					// 初始化智能图例
+					updateSmartLegend(chartData.models, chartData.colors, chartInstance);
+
+					return chartInstance;
+				}
+
+				// 加载操作员图表 - 优化图表
+				function loadOperatorChart(period, process) {
+					// 清除之前的空状态
+					clearEmptyState(operatorChartContainer);
+
+					if (operatorChart) {
+						operatorChart.destroy();
+						operatorChart = null;
+					}
+
+					// 确保canvas可见
+					if (operatorCtx) {
+						operatorCtx.style.display = 'block';
+					} else {
+						operatorCtx = document.getElementById('operatorChart');
+					}
+
+					let url = `/api/today-stats?period=${period}&process=${process}`;
+					if (period === 'custom') {
+						url += `&start_date=${customStart}&end_date=${customEnd}`;
+					}
+
+					fetch(url)
+						.then(response => response.json())
+						.then(data => {
+							if (data.operator_labels && data.operator_labels.length > 0) {
+								// 过滤掉产量为零的操作员
+								const combined = data.operator_labels
+									.map((label, index) => ({
+										label,
+										value: data.operator_values[index]
+									}))
+									.filter(item => item.value > 0) // 过滤产量为零的
+									.sort((a, b) => b.value - a.value);
+
+								const topData = combined.slice(0, 15);
+								const sortedLabels = topData.map(item => item.label);
+								const sortedValues = topData.map(item => item.value);
+
+								operatorChart = new Chart(operatorCtx, {
+									type: 'bar',
+									data: {
+										labels: sortedLabels,
+										datasets: [{
+											label: '生产数量',
+											data: sortedValues,
+											backgroundColor: sortedValues.map((value, index) => {
+												const colors = [
+													'rgba(40, 167, 69, 0.8)',
+													'rgba(0, 123, 255, 0.8)',
+													'rgba(255, 193, 7, 0.8)',
+													'rgba(220, 53, 69, 0.8)',
+													'rgba(111, 66, 193, 0.8)',
+													'rgba(253, 126, 20, 0.8)',
+													'rgba(32, 201, 151, 0.8)',
+													'rgba(23, 162, 184, 0.8)',
+													'rgba(108, 117, 125, 0.8)'
+												];
+												return colors[index % colors.length];
+											}),
+											borderColor: sortedValues.map((value, index) => {
+												const colors = [
+													'rgba(40, 167, 69, 1)',
+													'rgba(0, 123, 255, 1)',
+													'rgba(255, 193, 7, 1)',
+													'rgba(220, 53, 69, 1)',
+													'rgba(111, 66, 193, 1)',
+													'rgba(253, 126, 20, 1)',
+													'rgba(32, 201, 151, 1)',
+													'rgba(23, 162, 184, 1)',
+													'rgba(108, 117, 125, 1)'
+												];
+												return colors[index % colors.length];
+											}),
+											borderWidth: 1,
+											borderRadius: 2,
+											hoverBorderWidth: 2
+										}]
+									},
+									options: {
+										responsive: true,
+										maintainAspectRatio: false,
+										indexAxis: 'y',
+										interaction: {
+											intersect: false,
+											mode: 'index'
+										},
+										scales: {
+											x: {
+												beginAtZero: true,
+												title: {
+													display: true,
+													text: '生产数量',
+													font: {
+														size: 14,
+														weight: 'bold'
+													}
+												},
+												ticks: {
+													font: {
+														size: 12
+													},
+													callback: function (value) {
+														return value.toLocaleString();
+													}
+												},
+												grid: {
+													color: 'rgba(0, 0, 0, 0.05)'
+												}
+											},
+											y: {
+												title: {
+													display: true,
+													text: process === 'all' ? '操作员（含工序）' : '操作员',
+													font: {
+														size: 14,
+														weight: 'bold'
+													}
+												},
+												ticks: {
+													font: {
+														size: 12
+													}
+												},
+												grid: {
+													display: false
+												}
+											}
+										},
+										plugins: {
+											tooltip: {
+												backgroundColor: 'rgba(0, 0, 0, 0.8)',
+												titleFont: {
+													size: 13
+												},
+												bodyFont: {
+													size: 12
+												},
+												padding: 10,
+												cornerRadius: 4,
+												// 关键修改：过滤掉值为0的数据点
+												filter: function (tooltipItem) {
+													return tooltipItem.raw > 0;
+												},
+												callbacks: {
+													title: function (tooltipItems) {
+														return tooltipItems[0].label;
+													},
+													label: function (context) {
+														return '产量: ' + context.parsed.x.toLocaleString() + ' 件';
+													}
+												}
+											}
+										},
+										animation: {
+											duration: 500,
+											easing: 'easeOutQuart'
+										}
+									}
+								});
+							} else {
+								showEmptyState(operatorChartContainer, '该时间段内暂无操作员生产数据');
+							}
+						})
+						.catch(error => {
+							console.error('加载操作员图表失败:', error);
+							showEmptyState(operatorChartContainer, '加载数据失败，请刷新页面重试');
+						});
+				}
+
+				// 显示空状态
+				function showEmptyState(container, message) {
+					const canvas = container.querySelector('canvas');
+					if (canvas) {
+						canvas.style.display = 'none';
+					}
+					clearEmptyState(container);
+					const emptyDiv = document.createElement('div');
+					emptyDiv.className = 'empty-state';
+					emptyDiv.style.padding = '50px 20px';
+					emptyDiv.style.color = '#666';
+					emptyDiv.innerHTML = message;
+					emptyDiv.setAttribute('data-empty-state', 'true');
+					container.appendChild(emptyDiv);
+				}
+
+				// 清除空状态
+				function clearEmptyState(container) {
+					const emptyStates = container.querySelectorAll('[data-empty-state]');
+					emptyStates.forEach(el => {
+						if (el.parentNode === container) {
+							container.removeChild(el);
+						}
+					});
+					const canvas = container.querySelector('canvas');
+					if (canvas) {
+						canvas.style.display = 'block';
+					}
+				}
+
+				// 初始化图表
+				function initCharts() {
+					loadProcessChart('today', 'stacked');
+					loadOperatorChart('today', 'all');
+				}
+
+				// 初始化智能图例
+				initSmartLegend();
+
+				// 初始化图表
+				initCharts();
+
+				// 每5分钟刷新一次
+				setInterval(() => {
+					loadProcessChart(periodSelect.value, chartTypeSelect.value);
+					loadOperatorChart(periodSelect.value, operatorSelect.value);
+				}, 5 * 60 * 1000);
+			});
+		</script>
+</body>
+
+</html>

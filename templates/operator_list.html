@@ -1,0 +1,1374 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <title>操作员管理 - OpenPMS</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            padding: 20px 30px;
+            margin-bottom: 30px;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .nav {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .nav-btn.active {
+            background: rgba(255, 255, 255, 0.25);
+            font-weight: bold;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto 40px;
+            padding: 0 20px;
+        }
+
+        /* 页面标题和操作区域 */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .page-title {
+            font-size: 22px;
+            font-weight: 600;
+            color: #1e3c72;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .page-title:before {
+            content: "👷";
+            font-size: 20px;
+        }
+
+        /* 按钮样式 */
+        .btn {
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 4px;
+            color: white;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.3s;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn-add {
+            background: linear-gradient(135deg, #28a745, #20c997);
+        }
+
+        .btn-add:hover {
+            background: linear-gradient(135deg, #218838, #1ca179);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.2);
+        }
+
+        .btn-back {
+            background: #6c757d;
+        }
+
+        .btn-back:hover {
+            background: #5a6268;
+            transform: translateY(-1px);
+        }
+
+        .btn-delete {
+            background: linear-gradient(135deg, #dc3545, #c82333);
+            padding: 6px 12px;
+            font-size: 13px;
+        }
+
+        .btn-delete:hover {
+            background: linear-gradient(135deg, #c82333, #bd2130);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(220, 53, 69, 0.2);
+        }
+
+        .btn-delete-group {
+            background: linear-gradient(135deg, #fd7e14, #e8590c);
+            padding: 6px 12px;
+            font-size: 13px;
+        }
+
+        .btn-delete-group:hover {
+            background: linear-gradient(135deg, #e8590c, #d9480f);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(253, 126, 20, 0.2);
+        }
+
+        .btn-reset-password {
+            background: linear-gradient(135deg, #ffc107, #fd7e14);
+            padding: 6px 12px;
+            font-size: 13px;
+        }
+
+        .btn-reset-password:hover {
+            background: linear-gradient(135deg, #fd7e14, #e8590c);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(255, 193, 7, 0.2);
+        }
+
+        /* 卡片样式 */
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            padding: 18px 25px;
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .card-body {
+            padding: 0;
+            overflow-x: auto;
+        }
+
+        /* 表格样式 */
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 800px;
+        }
+
+        .table th {
+            background: #f8f9fa;
+            padding: 16px 20px;
+            text-align: left;
+            font-weight: 600;
+            color: #495057;
+            border-bottom: 2px solid #e9ecef;
+            font-size: 14px;
+            white-space: nowrap;
+        }
+
+        .table td {
+            padding: 16px 20px;
+            border-bottom: 1px solid #e9ecef;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .table tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .table tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* 消息提示样式 */
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+
+        .flash {
+            padding: 12px 20px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            border-left: 4px solid transparent;
+        }
+
+        .flash.success {
+            background: #d4edda;
+            color: #155724;
+            border-left-color: #28a745;
+        }
+
+        .flash.danger {
+            background: #f8d7da;
+            color: #721c24;
+            border-left-color: #dc3545;
+        }
+
+        .flash.warning {
+            background: #fff3cd;
+            color: #856404;
+            border-left-color: #ffc107;
+        }
+
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 50px 20px;
+            color: #6c757d;
+        }
+
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .empty-state h3 {
+            margin-bottom: 10px;
+            color: #495057;
+        }
+
+        /* 统计卡片 */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        .stat-title {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .stat-number {
+            font-size: 28px;
+            font-weight: bold;
+            color: #2a5298;
+        }
+
+        /* 操作列 */
+        .actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        /* 组卡片样式 - 增强版 */
+        .group-section {
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e9ecef;
+            overflow: hidden;
+        }
+
+        .group-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .group-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1e3c72;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .group-name:before {
+            content: "📁";
+            font-size: 16px;
+        }
+
+        .group-operator-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 15px 20px;
+            border-bottom: 1px solid #e9ecef;
+            background: #fafafa;
+        }
+
+        .operator-badge {
+            background: linear-gradient(135deg, #6c757d, #495057);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .operator-badge:before {
+            content: "👤";
+            font-size: 12px;
+        }
+
+        /* 组管理员特殊徽章样式 */
+        .operator-badge.owner {
+            background: linear-gradient(135deg, #ffc107, #fd7e14);
+            color: #333;
+            border: 2px solid #ffc107;
+            order: -1; /* 确保组管理员排在前面 */
+        }
+
+        .operator-badge.owner:before {
+            font-size: 12px;
+        }
+
+        .operator-count {
+            background: #e9ecef;
+            color: #6c757d;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        /* 操作员序号徽章 */
+        .operator-id-badge {
+            background: linear-gradient(135deg, #6c757d, #495057);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        /* 操作员状态指示器 */
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-active {
+            background-color: #28a745;
+            box-shadow: 0 0 5px rgba(40, 167, 69, 0.5);
+        }
+
+        /* 组标签 */
+        .group-label {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 15px;
+            }
+
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .header-top {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .nav {
+                flex-wrap: wrap;
+            }
+
+            .table {
+                font-size: 13px;
+            }
+
+            .table th,
+            .table td {
+                padding: 12px 15px;
+            }
+
+            .stats-row {
+                grid-template-columns: 1fr;
+            }
+
+            .actions {
+                flex-wrap: wrap;
+            }
+
+            .btn {
+                padding: 8px 15px;
+            }
+
+            .group-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .group-operator-list {
+                justify-content: flex-start;
+            }
+        }
+
+        /* 编辑状态指示器 */
+        .edit-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(0, 123, 255, 0.1);
+            color: #007bff;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+
+        /* 退出登录按钮 - 更新为纯文本样式 */
+        .btn-logout {
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            transition: opacity 0.3s;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .btn-logout:hover {
+            opacity: 0.8;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* 模态框样式 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            padding: 25px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-header {
+            margin-bottom: 20px;
+            color: #1e3c72;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            font-size: 18px;
+        }
+
+        .modal-body {
+            margin-bottom: 20px;
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 10px;
+        }
+
+        .modal-footer button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-confirm {
+            background: linear-gradient(135deg, #dc3545, #c82333);
+            color: white;
+        }
+
+        .btn-confirm:hover {
+            background: linear-gradient(135deg, #c82333, #bd2130);
+            transform: translateY(-1px);
+        }
+
+        .btn-cancel {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-cancel:hover {
+            background: #5a6268;
+            transform: translateY(-1px);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #444;
+            font-size: 14px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #333;
+            background: #fff;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .form-control:focus {
+            border-color: #2a5298;
+            box-shadow: 0 0 0 3px rgba(42, 82, 152, 0.15);
+        }
+
+        .form-help {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .operator-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            border-left: 4px solid #2a5298;
+        }
+
+        /* 新增样式：组管理员徽章和签字徽章 */
+        .owner-badge {
+            background: linear-gradient(135deg, #ffc107, #fd7e14);
+            color: #333;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .signed-badge {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        /* 折叠/展开按钮 */
+        .toggle-details-btn {
+            background: transparent;
+            border: 1px solid #ddd;
+            color: #666;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.3s;
+        }
+
+        .toggle-details-btn:hover {
+            background: #f8f9fa;
+            border-color: #ccc;
+        }
+
+        /* 组详细信息表格 */
+        .group-details-table {
+            width: 100%;
+            border-collapse: collapse;
+            display: none; /* 默认隐藏 */
+        }
+
+        .group-details-table.visible {
+            display: table;
+        }
+
+        .group-details-table th {
+            background: #f8f9fa;
+            padding: 12px 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #495057;
+            border-bottom: 2px solid #e9ecef;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        .group-details-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e9ecef;
+            color: #333;
+            font-size: 13px;
+        }
+
+        .group-details-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .group-details-table tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        /* 操作按钮组 */
+        .action-buttons-small {
+            display: flex;
+            gap: 6px;
+        }
+
+        .btn-small {
+            padding: 4px 8px;
+            font-size: 12px;
+            border-radius: 3px;
+            text-decoration: none;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        /* 组操作按钮 */
+        .group-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        /* 操作员徽章组 */
+        .operator-badges-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+        }
+        
+        /* 组管理员行样式 */
+        .group-owner-row td {
+            background-color: #fffcf5 !important;
+            border-left: 4px solid #ffc107 !important;
+        }
+        
+        .group-owner-row:hover td {
+            background-color: #fff8e1 !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <div class="header-top">
+            <h1>OpenPMS</h1>
+            <div class="user-info">
+                <span>欢迎，{{ current_user.username }}</span>
+                {% if current_user.is_admin %}
+                <span
+                    style="background: #ffc107; color: #333; padding: 4px 10px; border-radius: 12px; font-size: 12px;">管理员</span>
+                {% endif %}
+                <a href="{{ url_for('logout') }}" class="btn-logout">退出登录</a>
+            </div>
+        </div>
+
+        <div class="nav">
+            <a href="{{ url_for('index') }}" class="nav-btn">生产记录</a>
+
+            {% if has_perm('add_record') %}
+            <a href="{{ url_for('add_record') }}" class="nav-btn">添加记录</a>
+            {% endif %}
+
+            {% if has_perm('manage_process') %}
+            <a href="{{ url_for('process_list') }}" class="nav-btn">工序管理</a>
+            {% endif %}
+
+            {% if has_perm('manage_operator') %}
+            <a href="{{ url_for('operator_list') }}" class="nav-btn active">操作员管理</a>
+            {% endif %}
+
+            {% if has_perm('manage_users') %}
+            <a href="{{ url_for('user_list') }}" class="nav-btn">用户管理</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- 消息提示 -->
+        <div class="flash-messages">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
+        </div>
+
+        <!-- 页面标题和操作区域 -->
+        <div class="page-header">
+            <div class="page-title">操作员管理</div>
+            <div class="action-buttons">
+                <a href="{{ url_for('index') }}" class="btn btn-back">← 返回首页</a>
+                <a href="{{ url_for('add_operator') }}" class="btn btn-add">+ 添加操作员</a>
+            </div>
+        </div>
+
+        <!-- 当前用户角色提示 -->
+        {% if current_user %}
+        <div
+            style="background: #e8f4fd; color: #004085; padding: 10px 15px; border-radius: 6px; border-left: 4px solid #007bff; margin-bottom: 20px;">
+            <div style="font-size: 13px; display: flex; align-items: center; gap: 8px;">
+                <span>🔑</span>
+                <span>
+                    当前登录用户: <strong>{{ current_user.username }}</strong>
+                    {% if current_user.is_admin %}
+                    <span class="admin-badge"
+                        style="margin-left: 8px; background: linear-gradient(135deg, #ffc107, #fd7e14); color: #333; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; display: inline-block;">管理员</span>
+                    {% else %}
+                    <span class="user-badge"
+                        style="margin-left: 8px; background: #e9ecef; color: #6c757d; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; display: inline-block;">普通用户</span>
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- 操作员统计 -->
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-title">操作员总数</div>
+                <div class="stat-number">{{ operators|length }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">组数</div>
+                <div class="stat-number">{{ groups|length }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">组管理员人数</div>
+                <div class="stat-number">
+                    {% set group_owner_count = operators|selectattr('group_owner')|list|length %}
+                    {{ group_owner_count }}
+                </div>
+            </div>
+        </div>
+
+        <!-- 整合的按组查看卡片（包含详细列表） -->
+        <div class="card">
+            <div class="card-header">
+                操作员管理
+                <span style="font-size: 13px; font-weight: normal; margin-left: 10px; opacity: 0.9;">
+                    共 {{ groups|length }} 个组，{{ operators|length }} 个操作员
+                </span>
+            </div>
+
+            <div class="card-body" style="padding: 25px;">
+                {% if groups %}
+                {% for group in groups %}
+                {% set group_name = group[0] %}
+                {% set operator_names = group[1].split(',') %}
+                {% set group_operators = operators|selectattr('group_name', 'equalto', group_name)|list %}
+                {% set group_owner = group_operators|selectattr('group_owner')|first %}
+                
+                <div class="group-section" id="group-{{ loop.index }}">
+                    <div class="group-header">
+                        <div class="group-name">
+                            {{ group_name }}
+                            <span class="operator-count">{{ operator_names|length }} 人</span>
+                            {% if group_owner %}
+                            <span style="margin-left: 10px; font-size: 12px; color: #fd7e14; font-weight: 600;">
+                                组管理员: {{ group_owner.operator_name }}
+                            </span>
+                            {% endif %}
+                        </div>
+                        <div class="group-actions">
+                            <button class="toggle-details-btn" onclick="toggleGroupDetails({{ loop.index }})">
+                                <span class="toggle-icon">▼</span>
+                                <span class="toggle-text">查看详情</span>
+                            </button>
+                            <a href="{{ url_for('delete_operator_group', group_name=group_name) }}"
+                                class="btn btn-delete-group"
+                                onclick="return confirmDeleteGroup('{{ group_name }}', {{ operator_names|length }})">
+                                删除整组
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- 操作员徽章列表 -->
+                    <div class="group-operator-list">
+                        <div style="font-size: 13px; color: #666; margin-bottom: 8px;">组内成员：</div>
+                        <div class="operator-badges-container">
+                            <!-- 先显示组管理员 -->
+                            {% for operator in group_operators if operator.group_owner %}
+                            <div class="operator-badge owner" title="组管理员">
+                                {{ operator.operator_name }}
+                            </div>
+                            {% endfor %}
+                            
+                            <!-- 再显示普通组员 -->
+                            {% for operator in group_operators if not operator.group_owner %}
+                            <div class="operator-badge">
+                                {{ operator.operator_name }}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- 详细列表表格（默认隐藏） -->
+                    <table class="group-details-table" id="details-{{ loop.index }}">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>操作员姓名</th>
+                                <th>组管理员状态</th>
+                                <th>签名状态</th>
+                                <th>创建时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for operator in group_operators %}
+                            <tr {% if operator.group_owner %}class="group-owner-row"{% endif %}>
+                                <td>
+                                    <span class="operator-id-badge">#{{ operator.id }}</span>
+                                </td>
+                                <td>
+                                    <span class="status-indicator status-active"></span>
+                                    {% if operator.group_owner %}
+                                    <span style="font-weight: 600; color: #fd7e14;">
+                                        {{ operator.operator_name }}
+                                    </span>
+                                    {% else %}
+                                    {{ operator.operator_name }}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if operator.group_owner %}
+                                    <span class="owner-badge">组管理员</span>
+                                    {% else %}
+                                    <span style="color: #6c757d; font-size: 12px;">组员</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <!-- 修复：使用 signature_file 而不是 signature -->
+                                    {% if operator.signature_file %}
+                                    <span class="signed-badge">已签字</span>
+                                    {% else %}
+                                    <span style="color: #6c757d; font-size: 12px;">未签字</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ operator.create_time.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>
+                                    <div class="action-buttons-small">
+                                        <button onclick="showResetPasswordModal({{ operator.id }}, '{{ operator.operator_name }}')" 
+                                                class="btn-small btn-reset-password">
+                                            重置密码
+                                        </button>
+                                        
+                                        {% if operator.group_owner %}
+                                        <button onclick="revokeGroupOwner({{ operator.id }}, '{{ operator.operator_name }}')" 
+                                                class="btn-small" style="background: linear-gradient(135deg, #ffc107, #fd7e14);">
+                                            移除管理
+                                        </button>
+                                        {% else %}
+                                        <button onclick="grantGroupOwner({{ operator.id }}, '{{ operator.operator_name }}', '{{ operator.group_name }}')" 
+                                                class="btn-small" style="background: linear-gradient(135deg, #28a745, #20c997);">
+                                            设为管理
+                                        </button>
+                                        {% endif %}
+                                        
+                                        <a href="{{ url_for('delete_operator', id=operator.id) }}" class="btn-small btn-delete"
+                                            onclick="return confirmDeleteOperator('{{ operator.operator_name }}', '{{ operator.group_name }}')">
+                                            删除
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="empty-state">
+                    <div class="empty-icon">👷</div>
+                    <h3>暂无操作员数据</h3>
+                    <p>系统中还没有任何操作员，请点击"添加操作员"按钮创建新操作员</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 注意事项 -->
+        <div
+            style="background: #fff3cd; color: #856404; padding: 15px; border-radius: 6px; border-left: 4px solid #ffc107; margin-top: 20px;">
+            <div style="font-weight: 600; margin-bottom: 5px; display: flex; align-items: center; gap: 8px;">
+                <span>⚠️</span> 注意事项
+            </div>
+            <div style="font-size: 13px; line-height: 1.5;">
+                <p>1. 点击"查看详情"按钮可以展开/收起组内操作员的详细信息和操作按钮。</p>
+                <p>2. 组管理员会在列表中优先展示。</p>
+                <p>3. 删除操作员或整组前请确保没有生产记录正在使用，否则可能导致数据不一致。</p>
+                <p>4. 删除整组将移除该组所有操作员，此操作不可恢复。</p>
+                <p>5. 操作员按组管理，便于在生产记录中快速选择。</p>
+                <p>6. 组管理员可以查看组内所有生产记录并进行签字确认。</p>
+                <p>7. 每个组只能有一个组管理员，设置新组管理员会自动移除原组管理员权限。</p>
+                {% if current_user and current_user.is_superuser %}
+                <p style="color: #dc3545; font-weight: 600;">⚠️ 您当前以超级管理员身份登录，可以删除被使用的操作员和组。</p>
+                {% elif current_user and current_user.is_admin %}
+                <p style="color: #28a745; font-weight: 600;">✅ 您当前以管理员身份登录，可以管理所有操作员和组。</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- 重置密码模态框 -->
+    <div id="resetPasswordModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>重置操作员密码</h3>
+            </div>
+            <div class="modal-body">
+                <div class="operator-info" id="resetOperatorInfo">
+                    <!-- 操作员信息将在这里动态显示 -->
+                </div>
+                <form id="resetPasswordForm">
+                    <div class="form-group">
+                        <label for="newPassword">新密码</label>
+                        <input type="password" id="newPassword" class="form-control" placeholder="留空将重置为默认密码(000000)">
+                        <div class="form-help">提示：如留空，密码将重置为"000000"</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-confirm" onclick="submitPasswordReset()">重置密码</button>
+                <button type="button" class="btn-cancel" onclick="hideResetPasswordModal()">取消</button>
+            </div>
+            <input type="hidden" id="resetOperatorId">
+        </div>
+    </div>
+
+    <!-- 授权组管理员模态框 -->
+    <div id="grantGroupOwnerModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>设为组管理员</h3>
+            </div>
+            <div class="modal-body">
+                <div class="operator-info" id="groupOwnerOperatorInfo">
+                    <!-- 操作员信息将在这里动态显示 -->
+                </div>
+                <div style="background: #fff3cd; color: #856404; padding: 12px; border-radius: 6px; margin-bottom: 15px; font-size: 13px;">
+                    ⚠️ 注意：每个组只能有一个组管理员，设置新组管理员会自动移除原组管理员权限。
+                </div>
+                <div class="form-group">
+                    <label for="authorizationPassword">管理员密码确认</label>
+                    <input type="password" id="authorizationPassword" class="form-control" placeholder="请输入您的管理员密码">
+                    <div class="form-help">需要验证管理员身份</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-confirm" onclick="submitGroupOwnerGrant()">确认授权</button>
+                <button type="button" class="btn-cancel" onclick="hideGroupOwnerModal()">取消</button>
+            </div>
+            <input type="hidden" id="grantOperatorId">
+            <input type="hidden" id="grantGroupName">
+        </div>
+    </div>
+
+    <!-- 移除组管理员权限模态框 -->
+    <div id="revokeGroupOwnerModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>移除组管理员权限</h3>
+            </div>
+            <div class="modal-body">
+                <div class="operator-info" id="revokeOperatorInfo">
+                    <!-- 操作员信息将在这里动态显示 -->
+                </div>
+                <div style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 6px; margin-bottom: 15px; font-size: 13px;">
+                    ⚠️ 警告：移除组管理员权限后，该操作员将无法查看组内记录和签字确认。
+                </div>
+                <div class="form-group">
+                    <label for="revokePassword">管理员密码确认</label>
+                    <input type="password" id="revokePassword" class="form-control" placeholder="请输入您的管理员密码">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-confirm" onclick="submitGroupOwnerRevoke()">确认移除</button>
+                <button type="button" class="btn-cancel" onclick="hideRevokeModal()">取消</button>
+            </div>
+            <input type="hidden" id="revokeOperatorId">
+        </div>
+    </div>
+
+    <script>
+        let currentResetOperatorId = null;
+        let currentResetOperatorName = '';
+
+        function confirmDeleteOperator(operatorName, groupName) {
+            {% if current_user.is_superuser %}
+            return confirm(`确定要删除操作员 "${operatorName}" 吗？\n\n组名：${groupName}\n\n⚠️ 警告：您以超级管理员身份操作，可以删除被使用的操作员！`);
+            {% else %}
+            return confirm(`确定要删除操作员 "${operatorName}" 吗？\n\n组名：${groupName}\n\n注意：如果该操作员已被生产记录使用，删除可能导致数据不一致。`);
+            {% endif %}
+        }
+
+        function confirmDeleteGroup(groupName, memberCount) {
+            {% if current_user.is_superuser %}
+            return confirm(`确定要删除整个组 "${groupName}" 吗？\n\n组内成员：${memberCount} 人\n\n⚠️ 警告：您以超级管理员身份操作，可以删除被使用的组！`);
+            {% else %}
+            return confirm(`确定要删除整个组 "${groupName}" 吗？\n\n组内成员：${memberCount} 人\n\n警告：此操作将永久删除该组及其所有操作员，且不可恢复！`);
+            {% endif %}
+        }
+
+        // 显示重置密码模态框
+        function showResetPasswordModal(operatorId, operatorName) {
+            currentResetOperatorId = operatorId;
+            currentResetOperatorName = operatorName;
+            
+            // 更新模态框中的操作员信息
+            document.getElementById('resetOperatorInfo').innerHTML = `
+                <div style="font-weight: 600; color: #1e3c72; margin-bottom: 5px;">操作员：${operatorName}</div>
+                <div style="font-size: 13px; color: #666;">请为该操作员设置新密码</div>
+            `;
+            
+            document.getElementById('resetOperatorId').value = operatorId;
+            document.getElementById('resetPasswordModal').style.display = 'flex';
+            document.getElementById('newPassword').focus();
+        }
+
+        // 隐藏重置密码模态框
+        function hideResetPasswordModal() {
+            document.getElementById('resetPasswordModal').style.display = 'none';
+            document.getElementById('resetPasswordForm').reset();
+            currentResetOperatorId = null;
+            currentResetOperatorName = '';
+        }
+
+        // 提交密码重置
+        function submitPasswordReset() {
+            const newPassword = document.getElementById('newPassword').value;
+            
+            // 如果没有输入密码，使用默认密码
+            const passwordToSet = newPassword || '000000';
+            
+            // 显示加载状态
+            const confirmBtn = document.querySelector('.btn-confirm');
+            const originalText = confirmBtn.innerHTML;
+            confirmBtn.innerHTML = '处理中...';
+            confirmBtn.disabled = true;
+            
+            // 发送请求
+            fetch(`/operator/${currentResetOperatorId}/reset_password`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `password=${encodeURIComponent(passwordToSet)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('密码重置成功！');
+                    hideResetPasswordModal();
+                } else {
+                    alert('密码重置失败：' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('请求失败：' + error);
+            })
+            .finally(() => {
+                confirmBtn.innerHTML = originalText;
+                confirmBtn.disabled = false;
+            });
+            
+            return false;
+        }
+
+        // 组管理员授权功能
+        function grantGroupOwner(operatorId, operatorName, groupName) {
+            document.getElementById('grantOperatorId').value = operatorId;
+            document.getElementById('grantGroupName').value = groupName;
+            
+            document.getElementById('groupOwnerOperatorInfo').innerHTML = `
+                <div style="font-weight: 600; color: #1e3c72; margin-bottom: 5px;">操作员：${operatorName}</div>
+                <div style="color: #28a745; margin-bottom: 5px;">组名：${groupName}</div>
+                <div style="font-size: 13px; color: #666;">确认将该操作员设为组管理员？</div>
+            `;
+            
+            document.getElementById('grantGroupOwnerModal').style.display = 'flex';
+            document.getElementById('authorizationPassword').focus();
+        }
+
+        function hideGroupOwnerModal() {
+            document.getElementById('grantGroupOwnerModal').style.display = 'none';
+            document.getElementById('authorizationPassword').value = '';
+        }
+
+        function submitGroupOwnerGrant() {
+            const operatorId = document.getElementById('grantOperatorId').value;
+            const password = document.getElementById('authorizationPassword').value;
+            
+            if (!password) {
+                alert('请输入管理员密码！');
+                return;
+            }
+            
+            const confirmBtn = document.querySelector('#grantGroupOwnerModal .btn-confirm');
+            const originalText = confirmBtn.innerHTML;
+            confirmBtn.innerHTML = '处理中...';
+            confirmBtn.disabled = true;
+            
+            fetch(`/operator/${operatorId}/grant_owner`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `password=${encodeURIComponent(password)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('授权成功！');
+                    hideGroupOwnerModal();
+                    window.location.reload();
+                } else {
+                    alert('授权失败：' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('请求失败：' + error);
+            })
+            .finally(() => {
+                confirmBtn.innerHTML = originalText;
+                confirmBtn.disabled = false;
+            });
+        }
+
+        function revokeGroupOwner(operatorId, operatorName) {
+            document.getElementById('revokeOperatorId').value = operatorId;
+            
+            document.getElementById('revokeOperatorInfo').innerHTML = `
+                <div style="font-weight: 600; color: #1e3c72; margin-bottom: 5px;">操作员：${operatorName}</div>
+                <div style="font-size: 13px; color: #666;">确认移除该操作员的组管理员权限？</div>
+            `;
+            
+            document.getElementById('revokeGroupOwnerModal').style.display = 'flex';
+            document.getElementById('revokePassword').focus();
+        }
+
+        function hideRevokeModal() {
+            document.getElementById('revokeGroupOwnerModal').style.display = 'none';
+            document.getElementById('revokePassword').value = '';
+        }
+
+        function submitGroupOwnerRevoke() {
+            const operatorId = document.getElementById('revokeOperatorId').value;
+            const password = document.getElementById('revokePassword').value;
+            
+            if (!password) {
+                alert('请输入管理员密码！');
+                return;
+            }
+            
+            const confirmBtn = document.querySelector('#revokeGroupOwnerModal .btn-confirm');
+            const originalText = confirmBtn.innerHTML;
+            confirmBtn.innerHTML = '处理中...';
+            confirmBtn.disabled = true;
+            
+            fetch(`/operator/${operatorId}/revoke_owner`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `password=${encodeURIComponent(password)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('移除成功！');
+                    hideRevokeModal();
+                    window.location.reload();
+                } else {
+                    alert('移除失败：' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('请求失败：' + error);
+            })
+            .finally(() => {
+                confirmBtn.innerHTML = originalText;
+                confirmBtn.disabled = false;
+            });
+        }
+
+        // 切换组详细信息显示/隐藏
+        function toggleGroupDetails(groupIndex) {
+            const detailsTable = document.getElementById(`details-${groupIndex}`);
+            const toggleBtn = document.querySelector(`#group-${groupIndex} .toggle-details-btn`);
+            const toggleIcon = toggleBtn.querySelector('.toggle-icon');
+            const toggleText = toggleBtn.querySelector('.toggle-text');
+            
+            if (detailsTable.classList.contains('visible')) {
+                detailsTable.classList.remove('visible');
+                toggleIcon.textContent = '▼';
+                toggleText.textContent = '查看详情';
+            } else {
+                detailsTable.classList.add('visible');
+                toggleIcon.textContent = '▲';
+                toggleText.textContent = '收起详情';
+            }
+        }
+
+        // 点击模态框外部关闭
+        document.getElementById('resetPasswordModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                hideResetPasswordModal();
+            }
+        });
+
+        document.getElementById('grantGroupOwnerModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                hideGroupOwnerModal();
+            }
+        });
+
+        document.getElementById('revokeGroupOwnerModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                hideRevokeModal();
+            }
+        });
+
+        // 页面加载时自动展开第一个组的详细信息（如果有的话）
+        document.addEventListener('DOMContentLoaded', function () {
+            if (document.querySelector('.group-section')) {
+                // 默认展开第一个组
+                toggleGroupDetails(1);
+            }
+            
+            // 为删除按钮添加二次确认
+            const deleteOperatorButtons = document.querySelectorAll('.btn-delete');
+            deleteOperatorButtons.forEach(button => {
+                button.addEventListener('click', function (e) {
+                    const row = this.closest('tr');
+                    const operatorName = row.querySelector('td:nth-child(2)').textContent.trim().replace('●', '').trim();
+                    const groupName = row.closest('.group-section').querySelector('.group-name').textContent.split(' ')[0];
+
+                    {% if current_user.is_superuser %}
+                    if (!confirm(`确定要删除操作员 "${operatorName}" 吗？\n\n组名：${groupName}\n\n⚠️ 警告：您以超级管理员身份操作，可以删除被使用的操作员！`)) {
+                        e.preventDefault();
+                    }
+                    {% else %}
+                    if (!confirm(`确定要删除操作员 "${operatorName}" 吗？\n\n组名：${groupName}\n\n注意：如果该操作员已被生产记录使用，删除可能导致数据不一致。`)) {
+                        e.preventDefault();
+                    }
+                    {% endif %}
+                });
+            });
+
+            // 为删除组按钮添加二次确认
+            const deleteGroupButtons = document.querySelectorAll('.btn-delete-group');
+            deleteGroupButtons.forEach(button => {
+                button.addEventListener('click', function (e) {
+                    const groupSection = this.closest('.group-section');
+                    const groupName = groupSection.querySelector('.group-name').textContent.split(' ')[0];
+                    const memberCount = groupSection.querySelector('.operator-count').textContent.replace('人', '').trim();
+
+                    {% if current_user.is_superuser %}
+                    if (!confirm(`确定要删除整个组 "${groupName}" 吗？\n\n组内成员：${memberCount} 人\n\n⚠️ 警告：您以超级管理员身份操作，可以删除被使用的组！`)) {
+                        e.preventDefault();
+                    }
+                    {% else %}
+                    if (!confirm(`确定要删除整个组 "${groupName}" 吗？\n\n组内成员：${memberCount} 人\n\n警告：此操作将永久删除该组及其所有操作员，且不可恢复！`)) {
+                        e.preventDefault();
+                    }
+                    {% endif %}
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>

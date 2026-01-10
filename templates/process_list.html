@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <title>工序管理 - OpenPMS</title>
+    <style>
+        /* 原有的样式保持不变 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            padding: 20px 30px;
+            margin-bottom: 30px;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .nav {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .nav-btn.active {
+            background: rgba(255, 255, 255, 0.25);
+            font-weight: bold;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto 40px;
+            padding: 0 20px;
+        }
+
+        /* 页面标题和操作区域 */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .page-title {
+            font-size: 22px;
+            font-weight: 600;
+            color: #1e3c72;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .page-title:before {
+            content: "🛠️";
+            font-size: 20px;
+        }
+
+        /* 按钮样式 */
+        .btn {
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 4px;
+            color: white;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.3s;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn-add {
+            background: linear-gradient(135deg, #28a745, #20c997);
+        }
+
+        .btn-add:hover {
+            background: linear-gradient(135deg, #218838, #1ca179);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.2);
+        }
+
+        .btn-back {
+            background: #6c757d;
+        }
+
+        .btn-back:hover {
+            background: #5a6268;
+            transform: translateY(-1px);
+        }
+
+        .btn-delete {
+            background: linear-gradient(135deg, #dc3545, #c82333);
+            padding: 6px 12px;
+            font-size: 13px;
+        }
+
+        .btn-delete:hover {
+            background: linear-gradient(135deg, #c82333, #bd2130);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(220, 53, 69, 0.2);
+        }
+
+        /* 卡片样式 */
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            padding: 18px 25px;
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .card-body {
+            padding: 0;
+            overflow-x: auto;
+        }
+
+        /* 表格样式 */
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+
+        .table th {
+            background: #f8f9fa;
+            padding: 16px 20px;
+            text-align: left;
+            font-weight: 600;
+            color: #495057;
+            border-bottom: 2px solid #e9ecef;
+            font-size: 14px;
+            white-space: nowrap;
+        }
+
+        .table td {
+            padding: 16px 20px;
+            border-bottom: 1px solid #e9ecef;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .table tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .table tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* 消息提示样式 */
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+
+        .flash {
+            padding: 12px 20px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            border-left: 4px solid transparent;
+        }
+
+        .flash.success {
+            background: #d4edda;
+            color: #155724;
+            border-left-color: #28a745;
+        }
+
+        .flash.danger {
+            background: #f8d7da;
+            color: #721c24;
+            border-left-color: #dc3545;
+        }
+
+        .flash.warning {
+            background: #fff3cd;
+            color: #856404;
+            border-left-color: #ffc107;
+        }
+
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 50px 20px;
+            color: #6c757d;
+        }
+
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .empty-state h3 {
+            margin-bottom: 10px;
+            color: #495057;
+        }
+
+        /* 统计卡片 */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        .stat-title {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .stat-number {
+            font-size: 28px;
+            font-weight: bold;
+            color: #2a5298;
+        }
+
+        /* 操作列 */
+        .actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        /* 工序序号徽章 */
+        .process-badge {
+            background: linear-gradient(135deg, #6c757d, #495057);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        /* 工序状态指示器 */
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-active {
+            background-color: #28a745;
+            box-shadow: 0 0 5px rgba(40, 167, 69, 0.5);
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 15px;
+            }
+
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .header-top {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .nav {
+                flex-wrap: wrap;
+            }
+
+            .table {
+                font-size: 13px;
+            }
+
+            .table th,
+            .table td {
+                padding: 12px 15px;
+            }
+
+            .stats-row {
+                grid-template-columns: 1fr;
+            }
+
+            .actions {
+                flex-wrap: wrap;
+            }
+
+            .btn {
+                padding: 8px 15px;
+            }
+        }
+
+        /* 编辑状态指示器 */
+        .edit-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(0, 123, 255, 0.1);
+            color: #007bff;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+
+        /* 退出登录按钮 - 更新为纯文本样式 */
+        .btn-logout {
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            transition: opacity 0.3s;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .btn-logout:hover {
+            opacity: 0.8;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        /* 关联按钮样式 */
+        .btn-link {
+            background: linear-gradient(135deg, #17a2b8, #138496);
+            color: white;
+            padding: 6px 12px;
+            font-size: 13px;
+            border-radius: 4px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-left: 8px;
+        }
+
+        .btn-link:hover {
+            background: linear-gradient(135deg, #138496, #117a8b);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(23, 162, 184, 0.2);
+        }
+        
+        /* 下工序关联按钮样式 */
+        .btn-link-next {
+            background: linear-gradient(135deg, #6610f2, #6f42c1);
+            color: white;
+            padding: 6px 12px;
+            font-size: 13px;
+            border-radius: 4px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-left: 8px;
+        }
+
+        .btn-link-next:hover {
+            background: linear-gradient(135deg, #5a0fd9, #643ab0);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(102, 16, 242, 0.2);
+        }
+        
+        /* 模态框样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 25px;
+            border-radius: 8px;
+            width: 500px;
+            max-width: 90%;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .modal-title {
+            color: #1e3c72;
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .close-modal {
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+            line-height: 1;
+        }
+
+        .close-modal:hover {
+            color: #333;
+        }
+
+        .close-modal-next {
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+            line-height: 1;
+        }
+
+        .close-modal-next:hover {
+            color: #333;
+        }
+
+        .modal-body {
+            margin-bottom: 20px;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+
+        .modal-btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .modal-btn-cancel {
+            background: #6c757d;
+            color: white;
+        }
+
+        .modal-btn-cancel:hover {
+            background: #5a6268;
+        }
+
+        .modal-btn-save {
+            background: #28a745;
+            color: white;
+        }
+
+        .modal-btn-save:hover {
+            background: #218838;
+        }
+
+        /* 组选择样式 */
+        .group-checkbox-container {
+            margin-bottom: 8px;
+            padding: 10px;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .group-checkbox-container:hover {
+            background: #f8f9fa;
+            border-color: #007bff;
+        }
+
+        .group-checkbox-container label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            margin: 0;
+            font-weight: normal;
+        }
+
+        .group-checkbox-container input[type="checkbox"] {
+            margin: 0;
+            width: 16px;
+            height: 16px;
+        }
+
+        .group-name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .group-count {
+            font-size: 12px;
+            color: #6c757d;
+            background: #e9ecef;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-left: auto;
+        }
+
+        .empty-groups {
+            text-align: center;
+            padding: 30px 20px;
+            color: #6c757d;
+            font-style: italic;
+        }
+
+        /* 移动端调整 */
+        @media (max-width: 768px) {
+            .modal-content {
+                width: 95%;
+                margin: 10% auto;
+            }
+
+            .actions {
+                flex-wrap: wrap;
+            }
+
+            .btn-link, .btn-link-next {
+                margin-left: 0;
+                margin-top: 5px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <div class="header-top">
+            <h1>OpenPMS</h1>
+            <div class="user-info">
+                <span>欢迎，{{ current_user.username }}</span>
+                {% if current_user.is_admin %}
+                <span
+                    style="background: #ffc107; color: #333; padding: 4px 10px; border-radius: 12px; font-size: 12px;">管理员</span>
+                {% endif %}
+                <a href="{{ url_for('logout') }}" class="btn-logout">退出登录</a>
+            </div>
+        </div>
+
+        <div class="nav">
+            <a href="{{ url_for('index') }}" class="nav-btn">生产记录</a>
+
+            {% if has_perm('add_record') %}
+            <a href="{{ url_for('add_record') }}" class="nav-btn">添加记录</a>
+            {% endif %}
+
+            {% if has_perm('manage_process') %}
+            <a href="{{ url_for('process_list') }}" class="nav-btn active">工序管理</a>
+            {% endif %}
+
+            {% if has_perm('manage_operator') %}
+            <a href="{{ url_for('operator_list') }}" class="nav-btn">操作员管理</a>
+            {% endif %}
+
+            {% if has_perm('manage_users') %}
+            <a href="{{ url_for('user_list') }}" class="nav-btn">用户管理</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- 消息提示 -->
+        <div class="flash-messages">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
+        </div>
+
+        <!-- 页面标题和操作区域 -->
+        <div class="page-header">
+            <div class="page-title">工序管理</div>
+            <div class="action-buttons">
+                <a href="{{ url_for('index') }}" class="btn btn-back">← 返回首页</a>
+                <a href="{{ url_for('add_process') }}" class="btn btn-add">+ 添加工序</a>
+            </div>
+        </div>
+
+        <!-- 当前用户角色提示 -->
+        {% if current_user %}
+        <div
+            style="background: #e8f4fd; color: #004085; padding: 10px 15px; border-radius: 6px; border-left: 4px solid #007bff; margin-bottom: 20px;">
+            <div style="font-size: 13px; display: flex; align-items: center; gap: 8px;">
+                <span>🔑</span>
+                <span>
+                    当前登录用户: <strong>{{ current_user.username }}</strong>
+                    {% if current_user.is_admin %}
+                    <span class="admin-badge"
+                        style="margin-left: 8px; background: linear-gradient(135deg, #ffc107, #fd7e14); color: #333; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; display: inline-block;">管理员</span>
+                    {% else %}
+                    <span class="user-badge"
+                        style="margin-left: 8px; background: #e9ecef; color: #6c757d; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; display: inline-block;">普通用户</span>
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- 工序统计 -->
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-title">工序总数</div>
+                <div class="stat-number">{{ processes|length }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">最近添加</div>
+                <div class="stat-number">
+                    {% if processes %}
+                    {{ processes[-1].create_time.strftime('%m-%d') }}
+                    {% else %}
+                    暂无
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- 工序列表卡片 -->
+        <div class="card">
+            <div class="card-header">
+                工序列表
+                <span style="font-size: 13px; font-weight: normal; margin-left: 10px; opacity: 0.9;">
+                    共 {{ processes|length }} 个工序
+                </span>
+            </div>
+
+            <div class="card-body">
+                {% if processes %}
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>工序名称</th>
+                            <th>创建时间</th>
+                            <th>更新时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for process in processes %}
+                        <tr>
+                            <td>
+                                <span class="process-badge">#{{ process.id }}</span>
+                            </td>
+                            <td>
+                                <span class="status-indicator status-active"></span>
+                                {{ process.process_name }}
+                            </td>
+                            <td>{{ process.create_time.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>
+                                {% if process.update_time %}
+                                {{ process.update_time.strftime('%Y-%m-%d %H:%M') }}
+                                {% else %}
+                                --
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="actions">
+                                    <a href="{{ url_for('delete_process', id=process.id) }}" class="btn btn-delete"
+                                        onclick="return confirmDeleteProcess('{{ process.process_name }}')">
+                                        删除
+                                    </a>
+                                    <!-- 关联操作员组按钮 -->
+                                    <a href="#" class="btn btn-link" data-process-id="{{ process.id }}" data-process-name="{{ process.process_name }}">
+                                        🔗 关联组
+                                    </a>
+                                    <!-- 新增：关联下工序按钮 -->
+                                    <a href="#" class="btn btn-link-next" data-process-id="{{ process.id }}" data-process-name="{{ process.process_name }}">
+                                        ⏭️ 下工序
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="empty-state">
+                    <div class="empty-icon">🛠️</div>
+                    <h3>暂无工序数据</h3>
+                    <p>系统中还没有任何工序，请点击"添加工序"按钮创建新工序</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 注意事项 -->
+        <div
+            style="background: #fff3cd; color: #856404; padding: 15px; border-radius: 6px; border-left: 4px solid #ffc107; margin-top: 20px;">
+            <div style="font-weight: 600; margin-bottom: 5px; display: flex; align-items: center; gap: 8px;">
+                <span>⚠️</span> 注意事项
+            </div>
+            <div style="font-size: 13px; line-height: 1.5;">
+                <p>1. 删除工序前请确保没有生产记录正在使用该工序，否则可能导致数据不一致。</p>
+                <p>2. 工序名称应简洁明了，便于在生产记录中选择。</p>
+                <p>3. 建议按照生产流程的顺序命名工序，如"焊接1"、"装配2"、"涂装3"。</p>
+                <p>4. 使用"🔗 关联组"功能可以为工序关联操作员组，这样在添加记录时会自动筛选相关组。</p>
+                <p>5. 使用"⏭️ 下工序"功能可以为工序关联后续工序，这样在添加记录时会自动筛选相关的下工序。</p>
+                {% if current_user and current_user.is_superuser %}
+                <p style="color: #dc3545; font-weight: 600;">⚠️ 您当前以超级管理员身份登录，可以删除被使用的工序。</p>
+                {% elif current_user and current_user.is_admin %}
+                <p style="color: #28a745; font-weight: 600;">✅ 您当前以管理员身份登录，可以管理所有工序。</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- 关联组模态框 -->
+    <div id="linkGroupsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">🔗 管理工序关联组</div>
+                <span class="close-modal">&times;</span>
+            </div>
+            
+            <div class="modal-body">
+                <div style="margin-bottom: 15px;">
+                    <strong id="modalProcessName" style="color: #333; font-size: 16px;"></strong>
+                </div>
+                
+                <div style="margin-bottom: 15px; font-size: 13px; color: #666;">
+                    提示：选择该工序对应的操作员组，生产记录中将只显示关联的组
+                </div>
+                
+                <div id="groupsContainer" style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 10px;">
+                    <!-- 组列表会在这里动态加载 -->
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="modal-btn modal-btn-cancel" id="btnCancelLink">
+                    取消
+                </button>
+                <button type="button" class="modal-btn modal-btn-save" id="btnSaveLink">
+                    保存关联
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 关联下工序模态框 -->
+    <div id="linkNextProcessesModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">⏭️ 管理工序下工序</div>
+                <span class="close-modal-next">&times;</span>
+            </div>
+            
+            <div class="modal-body">
+                <div style="margin-bottom: 15px;">
+                    <strong id="modalNextProcessName" style="color: #333; font-size: 16px;"></strong>
+                </div>
+                
+                <div style="margin-bottom: 15px; font-size: 13px; color: #666;">
+                    提示：选择该工序的后续工序（可以多选）
+                </div>
+                
+                <div id="nextProcessesContainer" style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 10px;">
+                    <!-- 工序列表会在这里动态加载 -->
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="modal-btn modal-btn-cancel" id="btnCancelNextLink">
+                    取消
+                </button>
+                <button type="button" class="modal-btn modal-btn-save" id="btnSaveNextLink">
+                    保存关联
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量存储操作员组数据
+        const operatorGroups = {{ operator_groups|tojson }};
+        
+        // 关联管理功能
+        let currentProcessId = null;
+        let currentProcessName = '';
+        
+        // 下工序关联管理功能
+        let currentNextProcessId = null;
+        let currentNextProcessName = '';
+
+        // 打开关联组模态框
+        function openLinkGroupsModal(processId, processName) {
+            currentProcessId = processId;
+            currentProcessName = processName;
+            
+            // 更新模态框标题
+            document.getElementById('modalProcessName').textContent = `工序：${processName}`;
+            
+            // 加载组数据
+            loadGroupsForProcess(processId);
+            
+            // 显示模态框
+            document.getElementById('linkGroupsModal').style.display = 'block';
+        }
+
+        // 加载工序关联的组
+        function loadGroupsForProcess(processId) {
+            const container = document.getElementById('groupsContainer');
+            container.innerHTML = '<div style="text-align: center; padding: 20px;">加载中...</div>';
+            
+            fetch(`/api/process/${processId}/linked_groups`)
+                .then(response => response.json())
+                .then(data => {
+                    const allGroups = data.all_groups || [];
+                    const linkedGroups = data.linked_groups || [];
+                    
+                    if (allGroups.length === 0) {
+                        container.innerHTML = `
+                            <div class="empty-groups">
+                                <div>暂无操作员组数据</div>
+                                <div style="font-size: 12px; margin-top: 10px;">
+                                    请先在"操作员管理"中添加操作员组
+                                </div>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    let html = '';
+                    allGroups.forEach(group => {
+                        const isChecked = linkedGroups.includes(group);
+                        const operatorCount = operatorGroups[group] ? operatorGroups[group].length : 0;
+                        html += `
+                            <div class="group-checkbox-container">
+                                <label>
+                                    <input type="checkbox" name="group" value="${group}" ${isChecked ? 'checked' : ''}>
+                                    <span class="group-name">${group}</span>
+                                    <span class="group-count" title="组内操作员数量">
+                                        ${operatorCount}人
+                                    </span>
+                                </label>
+                            </div>
+                        `;
+                    });
+                    
+                    container.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('加载组数据失败:', error);
+                    container.innerHTML = '<div style="text-align: center; padding: 20px; color: #dc3545;">加载失败</div>';
+                });
+        }
+
+        // 保存组关联
+        function saveProcessGroups() {
+            if (!currentProcessId) return;
+            
+            const checkboxes = document.querySelectorAll('#groupsContainer input[type="checkbox"]');
+            const selectedGroups = Array.from(checkboxes)
+                .filter(cb => cb.checked)
+                .map(cb => cb.value);
+            
+            // 创建FormData
+            const formData = new FormData();
+            selectedGroups.forEach(group => {
+                formData.append('groups', group);
+            });
+            
+            // 发送请求
+            fetch(`/process/${currentProcessId}/link_groups`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.redirected) {
+                    window.location.href = response.url;
+                }
+            })
+            .catch(error => {
+                console.error('保存关联失败:', error);
+                alert('保存失败，请重试');
+            });
+        }
+
+        // 打开关联下工序模态框
+        function openLinkNextProcessesModal(processId, processName) {
+            currentNextProcessId = processId;
+            currentNextProcessName = processName;
+            
+            // 更新模态框标题
+            document.getElementById('modalNextProcessName').textContent = `工序：${processName}`;
+            
+            // 加载工序数据
+            loadProcessesForNextLink(processId);
+            
+            // 显示模态框
+            document.getElementById('linkNextProcessesModal').style.display = 'block';
+        }
+
+        // 加载可用的工序
+        function loadProcessesForNextLink(processId) {
+            const container = document.getElementById('nextProcessesContainer');
+            container.innerHTML = '<div style="text-align: center; padding: 20px;">加载中...</div>';
+            
+            fetch(`/api/process/${processId}/linked_next_processes`)
+                .then(response => response.json())
+                .then(data => {
+                    const allProcesses = data.all_processes || [];
+                    const linkedNextProcesses = data.linked_next_processes || [];
+                    
+                    if (allProcesses.length === 0) {
+                        container.innerHTML = `
+                            <div class="empty-groups">
+                                <div>暂无其他工序数据</div>
+                                <div style="font-size: 12px; margin-top: 10px;">
+                                    请先添加其他工序
+                                </div>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    let html = '';
+                    allProcesses.forEach(processName => {
+                        const isChecked = linkedNextProcesses.includes(processName);
+                        html += `
+                            <div class="group-checkbox-container">
+                                <label>
+                                    <input type="checkbox" name="next_process" value="${processName}" ${isChecked ? 'checked' : ''}>
+                                    <span class="group-name">${processName}</span>
+                                </label>
+                            </div>
+                        `;
+                    });
+                    
+                    container.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('加载工序数据失败:', error);
+                    container.innerHTML = '<div style="text-align: center; padding: 20px; color: #dc3545;">加载失败</div>';
+                });
+        }
+
+        // 保存下工序关联
+        function saveNextProcessLinks() {
+            if (!currentNextProcessId) return;
+            
+            const checkboxes = document.querySelectorAll('#nextProcessesContainer input[type="checkbox"]');
+            const selectedNextProcesses = Array.from(checkboxes)
+                .filter(cb => cb.checked)
+                .map(cb => cb.value);
+            
+            // 创建FormData
+            const formData = new FormData();
+            selectedNextProcesses.forEach(process => {
+                formData.append('next_processes', process);
+            });
+            
+            // 发送请求
+            fetch(`/process/${currentNextProcessId}/link_next_processes`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.redirected) {
+                    window.location.href = response.url;
+                }
+            })
+            .catch(error => {
+                console.error('保存关联失败:', error);
+                alert('保存失败，请重试');
+            });
+        }
+
+        // 关闭组关联模态框
+        function closeModal() {
+            document.getElementById('linkGroupsModal').style.display = 'none';
+            currentProcessId = null;
+            currentProcessName = '';
+        }
+        
+        // 关闭下工序模态框
+        function closeNextModal() {
+            document.getElementById('linkNextProcessesModal').style.display = 'none';
+            currentNextProcessId = null;
+            currentNextProcessName = '';
+        }
+
+        // 事件绑定
+        document.addEventListener('DOMContentLoaded', function() {
+            // 关联组按钮点击事件
+            document.addEventListener('click', function(e) {
+                if (e.target && e.target.matches('.btn-link') || 
+                    (e.target.parentElement && e.target.parentElement.matches('.btn-link'))) {
+                    e.preventDefault();
+                    
+                    // 获取工序信息
+                    const btn = e.target.matches('.btn-link') ? e.target : e.target.parentElement;
+                    const row = btn.closest('tr');
+                    const processId = row.querySelector('.process-badge').textContent.replace('#', '');
+                    const processName = row.querySelector('td:nth-child(2)').textContent.trim();
+                    
+                    openLinkGroupsModal(parseInt(processId), processName);
+                }
+            });
+            
+            // 关联下工序按钮点击事件
+            document.addEventListener('click', function(e) {
+                if (e.target && e.target.matches('.btn-link-next') || 
+                    (e.target.parentElement && e.target.parentElement.matches('.btn-link-next'))) {
+                    e.preventDefault();
+                    
+                    // 获取工序信息
+                    const btn = e.target.matches('.btn-link-next') ? e.target : e.target.parentElement;
+                    const row = btn.closest('tr');
+                    const processId = row.querySelector('.process-badge').textContent.replace('#', '');
+                    const processName = row.querySelector('td:nth-child(2)').textContent.trim();
+                    
+                    openLinkNextProcessesModal(parseInt(processId), processName);
+                }
+            });
+            
+            // 关闭按钮事件
+            document.querySelector('.close-modal')?.addEventListener('click', closeModal);
+            document.getElementById('btnCancelLink')?.addEventListener('click', closeModal);
+            
+            document.querySelector('.close-modal-next')?.addEventListener('click', closeNextModal);
+            document.getElementById('btnCancelNextLink')?.addEventListener('click', closeNextModal);
+            
+            // 保存按钮事件
+            document.getElementById('btnSaveLink')?.addEventListener('click', saveProcessGroups);
+            document.getElementById('btnSaveNextLink')?.addEventListener('click', saveNextProcessLinks);
+            
+            // 点击模态框外部关闭
+            document.getElementById('linkGroupsModal')?.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeModal();
+                }
+            });
+            
+            document.getElementById('linkNextProcessesModal')?.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeNextModal();
+                }
+            });
+        });
+
+        // 原有的删除确认函数
+        function confirmDeleteProcess(processName) {
+            {% if current_user.is_superuser %}
+            return confirm(`确定要永久删除工序 "${processName}" 吗？\n\n⚠️ 警告：您以超级管理员身份操作，可以删除被使用的工序！`);
+            {% else %}
+            return confirm(`确定要永久删除工序 "${processName}" 吗？\n\n注意：如果该工序已被生产记录使用，删除可能导致数据不一致。`);
+            {% endif %}
+        }
+    </script>
+</body>
+
+</html>

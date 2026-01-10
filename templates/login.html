@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <title>登录 - OpenPMS</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        /* 登录卡片 */
+        .login-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            width: 100%;
+            max-width: 450px;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .login-header {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-header:before {
+            content: "";
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 70%);
+            z-index: 1;
+        }
+
+        .login-header h1 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            position: relative;
+            z-index: 2;
+            letter-spacing: 0.5px;
+        }
+
+        .login-subtitle {
+            font-size: 14px;
+            opacity: 0.9;
+            position: relative;
+            z-index: 2;
+        }
+
+        .login-content {
+            padding: 35px;
+        }
+
+        /* 消息提示样式 */
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+
+        .flash {
+            padding: 12px 15px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            border-left: 4px solid transparent;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .flash.success {
+            background: #d4edda;
+            color: #155724;
+            border-left-color: #28a745;
+        }
+
+        .flash.danger {
+            background: #f8d7da;
+            color: #721c24;
+            border-left-color: #dc3545;
+        }
+
+        .flash.warning {
+            background: #fff3cd;
+            color: #856404;
+            border-left-color: #ffc107;
+        }
+
+        .flash:before {
+            font-size: 16px;
+        }
+
+        .flash.danger:before {
+            content: "⚠️";
+        }
+
+        /* 表单样式 */
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #444;
+            font-size: 14px;
+        }
+
+        .input-with-icon {
+            position: relative;
+        }
+
+        .input-with-icon input {
+            width: 100%;
+            padding: 14px 45px 14px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            color: #333;
+            background: #fff;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .input-with-icon input:focus {
+            border-color: #2a5298;
+            box-shadow: 0 0 0 3px rgba(42, 82, 152, 0.15);
+        }
+
+        .input-icon {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #666;
+            font-size: 18px;
+        }
+
+        /* 密码显示/隐藏切换 */
+        .toggle-password {
+            background: none;
+            border: none;
+            color: #666;
+            cursor: pointer;
+            font-size: 16px;
+            position: absolute;
+            right: 40px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        /* 按钮样式 */
+        .btn-login {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .btn-login:hover {
+            background: linear-gradient(135deg, #218838, #1ca179);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.2);
+        }
+
+        .btn-login:active {
+            transform: translateY(0);
+        }
+
+        /* 记住我和忘记密码 */
+        .login-options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            font-size: 14px;
+        }
+
+        .remember-me {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .remember-checkbox {
+            width: 18px;
+            height: 18px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .remember-checkbox:after {
+            content: "✓";
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        #remember:checked~.remember-checkbox {
+            background: #2a5298;
+            border-color: #2a5298;
+        }
+
+        #remember:checked~.remember-checkbox:after {
+            opacity: 1;
+        }
+
+        #remember {
+            display: none;
+        }
+
+        .forgot-password {
+            color: #2a5298;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .forgot-password:hover {
+            text-decoration: underline;
+        }
+
+        /* 页脚 */
+        .login-footer {
+            text-align: center;
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            font-size: 13px;
+            color: #666;
+        }
+
+        .system-info {
+            background: rgba(30, 60, 114, 0.1);
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+            text-align: left;
+            font-size: 12px;
+            color: #555;
+        }
+
+        .system-info strong {
+            color: #1e3c72;
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 480px) {
+            .login-content {
+                padding: 25px 20px;
+            }
+
+            .login-header {
+                padding: 25px 20px;
+            }
+
+            .login-header h1 {
+                font-size: 24px;
+            }
+
+            .login-options {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+
+            body {
+                padding: 15px;
+            }
+        }
+
+        /* 加载动画 */
+        .loading {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* 装饰元素 */
+        .decoration {
+            position: absolute;
+            z-index: 1;
+            opacity: 0.1;
+        }
+
+        .dec-1 {
+            top: 20px;
+            left: 20px;
+            font-size: 40px;
+        }
+
+        .dec-2 {
+            bottom: 20px;
+            right: 20px;
+            font-size: 40px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-card">
+        <div class="login-header">
+            <div class="decoration dec-1">🏭</div>
+            <div class="decoration dec-2">⚙️</div>
+            <h1>𝙊𝙥𝙚𝙣𝙋𝙈𝙎</h1>
+            <div class="login-subtitle">高效 · 安全 · 开源的生产数据管理平台</div>
+        </div>
+
+        <div class="login-content">
+            <!-- 消息提示 -->
+            <div class="flash-messages">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                {% for category, msg in messages %}
+                <div class="flash {{ category }}">{{ msg }}</div>
+                {% endfor %}
+                {% endif %}
+                {% endwith %}
+            </div>
+
+            <form method="post" id="login-form">
+                <div class="form-group">
+                    <label>用户名</label>
+                    <div class="input-with-icon">
+                        <input type="text" name="username" required placeholder="请输入用户名" id="username-input"
+                            autocomplete="username">
+                        <div class="input-icon">👤</div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>密码</label>
+                    <div class="input-with-icon">
+                        <input type="password" name="password" required placeholder="请输入密码" id="password-input"
+                            autocomplete="current-password">
+                        <button type="button" class="toggle-password" id="toggle-password">👁️</button>
+                        <div class="input-icon">🔒</div>
+                    </div>
+                </div>
+
+                <div class="login-options">
+                    <label class="remember-me">
+                        <input type="checkbox" name="remember" id="remember">
+                        <span class="remember-checkbox"></span>
+                        <span>记住我</span>
+                    </label>
+                    <!-- 如果需要忘记密码功能，可以取消注释 -->
+                    <!-- <a href="#" class="forgot-password">忘记密码？</a> -->
+                </div>
+
+                <button type="submit" class="btn-login" id="login-btn">
+                    <span>登录</span>
+                    <div class="loading" id="loading-spinner"></div>
+                </button>
+            </form>
+
+            <div class="login-footer">
+                <div>
+                    <p>本项目使用MIT开源协议<a href="https://github.com/Geekstrange/OpenPMS" target="_blank" rel="noopener noreferrer">GitHub</a>开源地址</p>
+                </div>
+                <div class="system-info">
+                    <strong>系统提示：</strong> 请使用分配的用户名和密码登录系统。如遇登录问题，请联系系统管理员。
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 密码显示/隐藏切换
+        const togglePasswordBtn = document.getElementById('toggle-password');
+        const passwordInput = document.getElementById('password-input');
+
+        togglePasswordBtn.addEventListener('click', function () {
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                this.textContent = '🙈';
+            } else {
+                passwordInput.type = 'password';
+                this.textContent = '👁️';
+            }
+        });
+
+        // 表单提交
+        const loginForm = document.getElementById('login-form');
+        const loginBtn = document.getElementById('login-btn');
+        const loadingSpinner = document.getElementById('loading-spinner');
+
+        loginForm.addEventListener('submit', function (e) {
+            const username = document.getElementById('username-input').value.trim();
+            const password = passwordInput.value.trim();
+
+            // 基本验证
+            if (!username || !password) {
+                e.preventDefault();
+                alert('请输入用户名和密码');
+                return false;
+            }
+
+            // 显示加载动画
+            loginBtn.disabled = true;
+            loginBtn.style.opacity = '0.8';
+            loginBtn.style.cursor = 'not-allowed';
+            loadingSpinner.style.display = 'block';
+
+            // 模拟网络延迟效果
+            setTimeout(() => {
+                loginBtn.disabled = false;
+                loginBtn.style.opacity = '1';
+                loginBtn.style.cursor = 'pointer';
+                loadingSpinner.style.display = 'none';
+            }, 2000);
+        });
+
+        // 页面加载时聚焦到用户名输入框
+        document.addEventListener('DOMContentLoaded', function () {
+            const usernameInput = document.getElementById('username-input');
+            if (usernameInput) {
+                usernameInput.focus();
+            }
+
+            // 检查是否有错误消息，如果有则添加震动效果
+            const errorFlash = document.querySelector('.flash.danger');
+            if (errorFlash) {
+                errorFlash.style.animation = 'shake 0.5s ease-in-out';
+            }
+
+            // 添加震动动画
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes shake {
+                    0%, 100% { transform: translateX(0); }
+                    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+                    20%, 40%, 60%, 80% { transform: translateX(5px); }
+                }
+            `;
+            document.head.appendChild(style);
+        });
+
+        // 回车键提交表单
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && !loginBtn.disabled) {
+                // 确保焦点在表单内
+                const activeElement = document.activeElement;
+                if (activeElement.tagName === 'INPUT' &&
+                    (activeElement.type === 'text' || activeElement.type === 'password')) {
+                    loginForm.requestSubmit();
+                }
+            }
+        });
+
+        // 用户名输入框回车跳转到密码框
+        document.getElementById('username-input').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                passwordInput.focus();
+            }
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <title>添加操作员 - OpenPMS</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            padding: 20px 30px;
+            margin-bottom: 30px;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .nav {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .nav-btn.active {
+            background: rgba(255, 255, 255, 0.25);
+            font-weight: bold;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto 40px;
+            padding: 0 20px;
+        }
+
+        /* 页面标题和操作区域 */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .page-title {
+            font-size: 22px;
+            font-weight: 600;
+            color: #1e3c72;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .page-title:before {
+            content: "👷";
+            font-size: 20px;
+        }
+
+        /* 按钮样式 */
+        .btn {
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 4px;
+            color: white;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.3s;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn-submit {
+            background: linear-gradient(135deg, #28a745, #20c997);
+        }
+
+        .btn-submit:hover {
+            background: linear-gradient(135deg, #218838, #1ca179);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.2);
+        }
+
+        .btn-back {
+            background: #6c757d;
+        }
+
+        .btn-back:hover {
+            background: #5a6268;
+            transform: translateY(-1px);
+        }
+
+        /* 卡片样式 */
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            padding: 18px 25px;
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .card-body {
+            padding: 25px;
+        }
+
+        /* 表单样式 */
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #495057;
+            font-size: 14px;
+        }
+
+        .form-control {
+            width: 100%;
+            max-width: 400px;
+            padding: 12px 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.3s;
+            background: #fff;
+        }
+
+        .form-select {
+            width: 100%;
+            max-width: 400px;
+            padding: 12px 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.3s;
+            background: #fff;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            background-size: 16px;
+        }
+
+        .form-textarea {
+            width: 100%;
+            max-width: 400px;
+            padding: 12px 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.3s;
+            background: #fff;
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .form-control:focus,
+        .form-select:focus,
+        .form-textarea:focus {
+            outline: none;
+            border-color: #2a5298;
+            box-shadow: 0 0 0 3px rgba(42, 82, 152, 0.1);
+        }
+
+        .form-control::placeholder,
+        .form-textarea::placeholder {
+            color: #adb5bd;
+        }
+
+        .form-hint {
+            font-size: 13px;
+            color: #6c757d;
+            margin-top: 8px;
+            line-height: 1.4;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e9ecef;
+        }
+
+        /* 新建组输入框样式 */
+        #new_group {
+            margin-top: 10px;
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* 消息提示样式 */
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+
+        .flash {
+            padding: 12px 20px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            border-left: 4px solid transparent;
+        }
+
+        .flash.success {
+            background: #d4edda;
+            color: #155724;
+            border-left-color: #28a745;
+        }
+
+        .flash.danger {
+            background: #f8d7da;
+            color: #721c24;
+            border-left-color: #dc3545;
+        }
+
+        .flash.warning {
+            background: #fff3cd;
+            color: #856404;
+            border-left-color: #ffc107;
+        }
+
+        /* 示例文本样式 */
+        .example-text {
+            background: #f8f9fa;
+            border-left: 3px solid #007bff;
+            padding: 10px 15px;
+            border-radius: 4px;
+            margin-top: 8px;
+            font-size: 13px;
+            color: #495057;
+            line-height: 1.4;
+        }
+
+        .example-text strong {
+            color: #1e3c72;
+        }
+
+        /* 密码字段样式 */
+        .input-with-icon {
+            position: relative;
+            max-width: 400px;
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #666;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 4px;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .toggle-password:hover {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        .form-help {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+            max-width: 400px;
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 15px;
+            }
+
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .header-top {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .nav {
+                flex-wrap: wrap;
+            }
+
+            .form-control,
+            .form-select,
+            .form-textarea,
+            .input-with-icon {
+                max-width: 100%;
+            }
+
+            .form-actions {
+                flex-direction: column;
+            }
+
+            .form-actions .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        /* 编辑状态指示器 */
+        .edit-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(0, 123, 255, 0.1);
+            color: #007bff;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+
+        /* 退出登录按钮 - 更新为纯文本样式 */
+        .btn-logout {
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            transition: opacity 0.3s;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .btn-logout:hover {
+            opacity: 0.8;
+            background: rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <div class="header-top">
+            <h1>OpenPMS</h1>
+            <div class="user-info">
+                <span>欢迎，{{ current_user.username }}</span>
+                {% if current_user.is_admin %}
+                <span
+                    style="background: #ffc107; color: #333; padding: 4px 10px; border-radius: 12px; font-size: 12px;">管理员</span>
+                {% endif %}
+                <a href="{{ url_for('logout') }}" class="btn-logout">退出登录</a>
+            </div>
+        </div>
+
+        <div class="nav">
+            <a href="{{ url_for('index') }}" class="nav-btn">生产记录</a>
+
+            {% if has_perm('add_record') %}
+            <a href="{{ url_for('add_record') }}" class="nav-btn">添加记录</a>
+            {% endif %}
+
+            {% if has_perm('manage_process') %}
+            <a href="{{ url_for('process_list') }}" class="nav-btn">工序管理</a>
+            {% endif %}
+
+            {% if has_perm('manage_operator') %}
+            <a href="{{ url_for('operator_list') }}" class="nav-btn active">操作员管理 <span
+                    class="edit-indicator">添加操作员</span></a>
+            {% endif %}
+
+            {% if has_perm('manage_users') %}
+            <a href="{{ url_for('user_list') }}" class="nav-btn">用户管理</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- 消息提示 -->
+        <div class="flash-messages">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
+        </div>
+
+        <!-- 页面标题和操作区域 -->
+        <div class="page-header">
+            <div class="page-title">添加操作员</div>
+            <div class="action-buttons">
+                <a href="{{ url_for('operator_list') }}" class="btn btn-back">← 返回列表</a>
+            </div>
+        </div>
+
+        <!-- 表单卡片 -->
+        <div class="card">
+            <div class="card-header">
+                操作员信息
+                <span style="font-size: 13px; font-weight: normal; margin-left: 10px; opacity: 0.9;">
+                    批量添加操作员到指定组
+                </span>
+            </div>
+
+            <div class="card-body">
+                <form method="post">
+                    <div class="form-group">
+                        <label class="form-label">组名</label>
+                        <select name="group_name" class="form-select" required>
+                            <option value="">选择组名</option>
+                            {% for group in groups %}
+                            <option value="{{ group }}">{{ group }}</option>
+                            {% endfor %}
+                            <option value="new">新建组名</option>
+                        </select>
+                        <input type="text" id="new_group" name="new_group" class="form-control" placeholder="输入新的组名"
+                            style="display: none; margin-top: 10px;">
+                        <div class="form-hint">
+                            选择现有组名或创建新的组名
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">操作员名称</label>
+                        <textarea name="operator_names" class="form-textarea" required
+                            placeholder="输入操作员名称，可以用逗号、空格或换行分隔多个名称"></textarea>
+                        <div class="form-hint">
+                            支持同时添加多个操作员，用逗号、空格或换行分隔
+                        </div>
+                        <div class="example-text">
+                            <strong>输入示例：</strong><br>
+                            张三,李四,王五<br>
+                            <strong>或：</strong><br>
+                            张三 李四 王五<br>
+                            <strong>或：</strong><br>
+                            张三<br>
+                            李四<br>
+                            王五
+                        </div>
+                    </div>
+
+                    <!-- 新增的密码字段 -->
+                    <div class="form-group">
+                        <label class="form-label">操作员密码</label>
+                        <div class="input-with-icon">
+                            <input type="password" name="password" id="password" class="form-control" 
+                                   placeholder="留空使用默认密码(000000)">
+                            <button type="button" class="toggle-password" onclick="togglePassword()">👁️</button>
+                        </div>
+                        <div class="form-help">
+                            提示：如留空，密码将设置为"000000"，操作员可以登录后自行修改
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-submit">保存操作员</button>
+                        <a href="{{ url_for('operator_list') }}" class="btn btn-back">取消</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 注意事项 -->
+        <div
+            style="background: #fff3cd; color: #856404; padding: 15px; border-radius: 6px; border-left: 4px solid #ffc107; margin-top: 20px;">
+            <div style="font-weight: 600; margin-bottom: 5px; display: flex; align-items: center; gap: 8px;">
+                <span>💡</span> 填写提示
+            </div>
+            <div style="font-size: 13px; line-height: 1.5;">
+                <p>1. 组名用于对操作员进行分类管理，例如"焊接组"、"装配组"、"检验组"等。</p>
+                <p>2. 可以批量添加操作员，系统会自动解析分隔符并创建多个操作员。</p>
+                <p>3. 操作员名称应使用真实姓名或工号，便于在生产记录中选择。</p>
+                <p>4. 如果组名已存在，新操作员将被添加到该组中。</p>
+                <p>5. 密码默认为"000000"，操作员首次登录后建议修改密码。</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const groupSelect = document.querySelector('select[name="group_name"]');
+            const newGroupInput = document.getElementById('new_group');
+
+            // 组选择逻辑
+            groupSelect.addEventListener('change', function () {
+                if (this.value === 'new') {
+                    newGroupInput.style.display = 'block';
+                    newGroupInput.required = true;
+                } else {
+                    newGroupInput.style.display = 'none';
+                    newGroupInput.required = false;
+                    newGroupInput.value = '';
+                }
+            });
+
+            // 如果刷新后需要保持状态
+            if (groupSelect.value === 'new') {
+                newGroupInput.style.display = 'block';
+                newGroupInput.required = true;
+            }
+
+            // 为表单控件添加焦点效果
+            const formControls = document.querySelectorAll('.form-control, .form-select, .form-textarea');
+            formControls.forEach(control => {
+                control.addEventListener('focus', function () {
+                    this.style.borderColor = '#2a5298';
+                    this.style.boxShadow = '0 0 0 3px rgba(42, 82, 152, 0.1)';
+                });
+
+                control.addEventListener('blur', function () {
+                    this.style.borderColor = '#e0e0e0';
+                    this.style.boxShadow = 'none';
+                });
+            });
+
+            // 表单验证
+            document.querySelector('form').addEventListener('submit', function(e) {
+                const groupName = document.querySelector('select[name="group_name"]').value;
+                const newGroup = document.getElementById('new_group').value;
+                const operatorNames = document.querySelector('textarea[name="operator_names"]').value.trim();
+                
+                if (groupName === 'new' && !newGroup) {
+                    e.preventDefault();
+                    alert('请填写新的组名！');
+                    document.getElementById('new_group').focus();
+                    return false;
+                }
+                
+                if (!operatorNames) {
+                    e.preventDefault();
+                    alert('请填写操作员名称！');
+                    document.querySelector('textarea[name="operator_names"]').focus();
+                    return false;
+                }
+                
+                return true;
+            });
+        });
+
+        // 密码显示/隐藏切换
+        function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            const toggleBtn = document.querySelector('.toggle-password');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleBtn.textContent = '🙈';
+            } else {
+                passwordInput.type = 'password';
+                toggleBtn.textContent = '👁️';
+            }
+        }
+    </script>
+</body>
+
+</html>

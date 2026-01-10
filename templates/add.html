@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>添加生产记录 - OpenPMS</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Microsoft YaHei", sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            padding: 20px 30px;
+            margin-bottom: 30px;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .nav {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .nav-btn.active {
+            background: rgba(255, 255, 255, 0.25);
+            font-weight: bold;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto 40px;
+            padding: 0 20px;
+        }
+
+        /* 表单卡片样式 */
+        .form-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+
+        .form-header {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            padding: 20px 30px;
+        }
+
+        .form-header h2 {
+            font-size: 20px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-header h2:before {
+            content: "＋";
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .form-content {
+            padding: 30px;
+        }
+
+        /* 表单组样式 */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #444;
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #333;
+            background: #fff;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            border-color: #2a5298;
+            box-shadow: 0 0 0 3px rgba(42, 82, 152, 0.1);
+        }
+
+        /* 适配多选下拉框的样式 */
+        select[multiple] {
+            height: 120px;
+            padding: 8px;
+            resize: vertical;
+        }
+
+        /* 下拉框美化 */
+        .group-select-wrapper {
+            position: relative;
+        }
+
+        .group-select-wrapper::after {
+            content: "▼";
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 10px;
+            color: #666;
+            pointer-events: none;
+        }
+
+        .group-select-wrapper select[multiple]::after {
+            content: none;
+        }
+
+        /* 多选提示文字 */
+        .multiple-tip {
+            font-size: 12px;
+            color: #666;
+            margin-top: 6px;
+            font-style: italic;
+        }
+
+        /* 按钮区域 */
+        .form-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 25px;
+            border-top: 1px solid #eee;
+            margin-top: 10px;
+        }
+
+        .btn-submit {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 15px;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-submit:hover {
+            background: linear-gradient(135deg, #218838, #1ca179);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.2);
+        }
+
+        .btn-back {
+            background: #6c757d;
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.3s;
+        }
+
+        .btn-back:hover {
+            background: #5a6268;
+            transform: translateY(-1px);
+        }
+
+        /* 消息提示样式 */
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+
+        .flash {
+            padding: 12px 20px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            border-left: 4px solid transparent;
+        }
+
+        .flash.success {
+            background: #d4edda;
+            color: #155724;
+            border-left-color: #28a745;
+        }
+
+        .flash.danger {
+            background: #f8d7da;
+            color: #721c24;
+            border-left-color: #dc3545;
+        }
+
+        .flash.warning {
+            background: #fff3cd;
+            color: #856404;
+            border-left-color: #ffc107;
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 15px;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            .form-content {
+                padding: 20px;
+            }
+
+            .header {
+                padding: 15px 20px;
+            }
+
+            .header-top {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .nav {
+                flex-wrap: wrap;
+            }
+
+            .form-actions {
+                flex-direction: column-reverse;
+                gap: 15px;
+                align-items: stretch;
+            }
+
+            .btn-submit,
+            .btn-back {
+                width: 100%;
+                justify-content: center;
+            }
+
+            /* 移动端恢复垂直布局 */
+            .operator-group-row {
+                flex-direction: column;
+                gap: 20px !important;
+            }
+        }
+
+        /* 选择框选项悬停效果 */
+        .form-group option:hover {
+            background-color: #f0f8ff !important;
+            color: #1e3c72;
+        }
+
+        /* 必填字段标记 */
+        .required::after {
+            content: " *";
+            color: #dc3545;
+        }
+
+        /* 编辑状态指示器 */
+        .edit-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(0, 123, 255, 0.1);
+            color: #007bff;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+
+        /* 退出登录按钮 - 更新为纯文本样式 */
+        .btn-logout {
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            transition: opacity 0.3s;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .btn-logout:hover {
+            opacity: 0.8;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* 组别+操作员 同行布局 */
+        .operator-group-row {
+            display: flex;
+            gap: 25px;
+            margin-bottom: 20px;
+        }
+
+        .operator-group-row .form-group {
+            flex: 1;
+            margin-bottom: 0;
+        }
+        
+        /* 下一工序提示样式 */
+        .next-process-hint {
+            font-size: 12px;
+            color: #666;
+            margin-left: 10px;
+            padding: 2px 8px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            border-left: 3px solid #6c757d;
+            transition: all 0.3s;
+        }
+        
+        .next-process-hint.has-links {
+            border-left-color: #28a745;
+            background: #d4edda;
+            color: #155724;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <div class="header-top">
+            <h1>OpenPMS</h1>
+            <div class="user-info">
+                <span>欢迎，{{ current_user.username }}</span>
+                {% if current_user.is_admin %}
+                <span
+                    style="background: #ffc107; color: #333; padding: 4px 10px; border-radius: 12px; font-size: 12px;">管理员</span>
+                {% endif %}
+                <a href="{{ url_for('logout') }}" class="btn-logout">退出登录</a>
+            </div>
+        </div>
+
+        <div class="nav">
+            <a href="{{ url_for('index') }}" class="nav-btn">生产记录</a>
+
+            {% if has_perm('add_record') %}
+            <a href="{{ url_for('add_record') }}" class="nav-btn active">添加记录</a>
+            {% endif %}
+
+            {% if has_perm('manage_process') %}
+            <a href="{{ url_for('process_list') }}" class="nav-btn">工序管理</a>
+            {% endif %}
+
+            {% if has_perm('manage_operator') %}
+            <a href="{{ url_for('operator_list') }}" class="nav-btn">操作员管理</a>
+            {% endif %}
+
+            {% if has_perm('manage_users') %}
+            <a href="{{ url_for('user_list') }}" class="nav-btn">用户管理</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- 消息提示 -->
+        <div class="flash-messages">
+            {% with messages = get_flashed_messages(with_categories=true) %} {% if
+            messages %} {% for category, msg in messages %}
+            <div class="flash {{ category }}">{{ msg }}</div>
+            {% endfor %} {% endif %} {% endwith %}
+        </div>
+
+        <div class="form-card">
+            <div class="form-header">
+                <h2>添加生产记录</h2>
+            </div>
+
+            <div class="form-content">
+                <form method="post">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="required">产品代码</label>
+                            <input type="text" name="product_code" required placeholder="请输入产品代码" />
+                        </div>
+
+                        <div class="form-group">
+                            <label class="required">生产工序</label>
+                            <select name="process" id="process-select" required>
+                                <option value="">请选择生产工序</option>
+                                {% for p in process_options %}
+                                <option value="{{ p }}">{{ p }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>下一工序（可选）</label>
+                            <select name="next_process" id="next-process-select">
+                                <option value="">请选择下一工序（可选）</option>
+                                <!-- 选项会通过JavaScript动态生成 -->
+                            </select>
+                            <span id="next-process-hint" class="next-process-hint"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="required">生产数量</label>
+                            <input type="number" name="number" required min="1" placeholder="请输入生产数量" />
+                        </div>
+                    </div>
+
+                    <!-- 组别+操作员 同行布局 -->
+                    <div class="operator-group-row">
+                        <!-- 一级下拉：选择组 -->
+                        <div class="form-group">
+                            <label class="required">组别</label>
+                            <div class="group-select-wrapper">
+                                <select name="group" id="group-select" class="group-select" required>
+                                    <option value="">请选择组别</option>
+                                    {% for group in operator_groups.keys() %}
+                                    <option value="{{ group }}">{{ group }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- 二级下拉：多选操作员（根据组联动） -->
+                        <div class="form-group">
+                            <label class="required">操作员</label>
+                            <div class="group-select-wrapper">
+                                <select name="operator" id="operator-select" class="group-select" multiple required>
+                                    <option value="">请先选择组别</option>
+                                </select>
+                            </div>
+                            <div class="multiple-tip">
+                                提示：按住 Ctrl 键可多选操作员，按住 Shift 键可连续选择
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 备注字段 -->
+                    <div class="form-group">
+                        <label>备注（可选）</label>
+                        <textarea name="note" placeholder="请输入备注信息（可选）"></textarea>
+                    </div>
+
+                    <div class="form-actions">
+                        <a href="{{ url_for('index') }}" class="btn-back">← 返回列表</a>
+                        <button type="submit" class="btn-submit">
+                            <span>💾</span> 保存记录
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 组与成员的映射关系
+        const operatorGroups = {{ operator_groups| tojson }};
+
+        // 工序与组的关联映射
+        const processLinks = {{ process_links| tojson }};
+        
+        // 工序与下工序的关联映射（新增）
+        const processNextLinks = {{ process_next_links| tojson }};
+
+        // 获取下拉框元素
+        const processSelect = document.getElementById('process-select');
+        const groupSelect = document.getElementById('group-select');
+        const operatorSelect = document.getElementById('operator-select');
+        const nextProcessSelect = document.getElementById('next-process-select');
+        const nextProcessHint = document.getElementById('next-process-hint');
+
+        // 更新操作员下拉框的函数
+        function updateOperatorSelect() {
+            const selectedGroup = groupSelect.value;
+            operatorSelect.innerHTML = '';
+
+            if (selectedGroup) {
+                // 添加选中组的所有成员（支持多选）
+                const operators = operatorGroups[selectedGroup] || [];
+
+                if (operators.length > 0) {
+                    operators.forEach(operator => {
+                        const option = document.createElement('option');
+                        option.value = operator;  // 这里 operator 是对象
+                        option.textContent = operator;  // 这里也是对象
+                        operatorSelect.appendChild(option);
+                    });
+                    operators.forEach(operatorName => {  // 现在 operatorName 是字符串
+                        const option = document.createElement('option');
+                        option.value = operatorName;
+                        option.textContent = operatorName;
+                        operatorSelect.appendChild(option);
+                    });
+
+                    // 添加提示选项
+                    const hintOption = document.createElement('option');
+                    hintOption.disabled = true;
+                    hintOption.textContent = `已加载 ${operators.length} 名操作员`;
+                    hintOption.style.fontStyle = 'italic';
+                    hintOption.style.color = '#666';
+                    operatorSelect.appendChild(hintOption);
+                } else {
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = '该组暂无操作员';
+                    operatorSelect.appendChild(option);
+                }
+            } else {
+                // 未选择组时显示提示
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = '请先选择组别';
+                operatorSelect.appendChild(option);
+            }
+        }
+
+        // 监听工序选择变化
+        processSelect.addEventListener('change', function () {
+            const selectedProcess = this.value;
+
+            // 清空现有组选项
+            groupSelect.innerHTML = '<option value="">请选择组别</option>';
+
+            if (selectedProcess) {
+                // 获取该工序关联的组
+                const linkedGroups = processLinks[selectedProcess] || [];
+                const allGroups = operatorGroups ? Object.keys(operatorGroups) : [];
+
+                // 如果有关联的组，只显示关联的组
+                const displayGroups = linkedGroups.length > 0 ? linkedGroups : allGroups;
+
+                displayGroups.forEach(group => {
+                    if (operatorGroups[group]) {
+                        const option = document.createElement('option');
+                        option.value = group;
+                        option.textContent = group;
+                        groupSelect.appendChild(option);
+                    }
+                });
+
+                // 如果有关联组，显示提示
+                if (linkedGroups.length > 0) {
+                    const hintOption = document.createElement('option');
+                    hintOption.disabled = true;
+                    hintOption.textContent = `已关联 ${linkedGroups.length} 个组`;
+                    hintOption.style.fontStyle = 'italic';
+                    hintOption.style.color = '#666';
+                    groupSelect.appendChild(hintOption);
+                }
+
+                // 如果只有一个组，自动选中并更新操作员
+                if (displayGroups.length === 1) {
+                    groupSelect.value = displayGroups[0];
+                    updateOperatorSelect(); // 直接调用函数而不是触发事件
+                }
+                
+                // 更新下一工序下拉框
+                updateNextProcessSelect(selectedProcess);
+            }
+
+            // 如果没有选中组，清空操作员选择
+            if (!groupSelect.value) {
+                operatorSelect.innerHTML = '<option value="">请先选择组别</option>';
+            }
+        });
+
+        // 更新下一工序下拉框的函数
+        function updateNextProcessSelect(selectedProcess) {
+            // 清空下一工序下拉框
+            nextProcessSelect.innerHTML = '<option value="">请选择下一工序（可选）</option>';
+            nextProcessHint.textContent = '';
+            nextProcessHint.className = 'next-process-hint';
+            
+            if (selectedProcess && processNextLinks[selectedProcess]) {
+                // 获取当前工序关联的下工序
+                const linkedNext = processNextLinks[selectedProcess];
+                if (linkedNext.length > 0) {
+                    // 添加关联的下工序选项
+                    linkedNext.forEach(next => {
+                        const option = document.createElement('option');
+                        option.value = next;
+                        option.textContent = next;
+                        nextProcessSelect.appendChild(option);
+                    });
+                    
+                    // 显示提示
+                    nextProcessHint.textContent = `已关联 ${linkedNext.length} 个下工序`;
+                    nextProcessHint.className = 'next-process-hint has-links';
+                    
+                    // 如果关联的下工序只有一个，自动选中
+                    if (linkedNext.length === 1) {
+                        nextProcessSelect.value = linkedNext[0];
+                    }
+                } else {
+                    // 没有关联下工序，显示所有工序
+                    const allProcesses = {{ process_options|tojson }};
+                    allProcesses.forEach(p => {
+                        if (p !== selectedProcess) {
+                            const option = document.createElement('option');
+                            option.value = p;
+                            option.textContent = p;
+                            nextProcessSelect.appendChild(option);
+                        }
+                    });
+                    
+                    // 显示提示
+                    nextProcessHint.textContent = '未关联下工序';
+                    nextProcessHint.className = 'next-process-hint';
+                }
+            } else if (selectedProcess) {
+                // 没有关联数据，显示所有工序
+                const allProcesses = {{ process_options|tojson }};
+                allProcesses.forEach(p => {
+                    if (p !== selectedProcess) {
+                        const option = document.createElement('option');
+                        option.value = p;
+                        option.textContent = p;
+                        nextProcessSelect.appendChild(option);
+                    }
+                });
+                
+                // 显示提示
+                nextProcessHint.textContent = '未关联下工序';
+                nextProcessHint.className = 'next-process-hint';
+            }
+        }
+
+        // 监听组选择变化
+        groupSelect.addEventListener('change', updateOperatorSelect);
+
+        // 表单提交前的验证
+        document.querySelector('form').addEventListener('submit', function (e) {
+            const operatorSelect = document.getElementById('operator-select');
+            const selectedOperators = Array.from(operatorSelect.selectedOptions)
+                .filter(option => option.value && !option.disabled);
+
+            if (selectedOperators.length === 0) {
+                e.preventDefault();
+                alert('请至少选择一名操作员');
+                operatorSelect.focus();
+                return false;
+            }
+
+            // 验证生产数量
+            const numberInput = document.querySelector('input[name="number"]');
+            if (numberInput.value <= 0) {
+                e.preventDefault();
+                alert('生产数量必须大于0');
+                numberInput.focus();
+                return false;
+            }
+
+            // 验证产品代码
+            const productCodeInput = document.querySelector('input[name="product_code"]');
+            if (!productCodeInput.value.trim()) {
+                e.preventDefault();
+                alert('产品代码不能为空');
+                productCodeInput.focus();
+                return false;
+            }
+
+            // 验证工序
+            const processInput = document.getElementById('process-select');
+            if (!processInput.value) {
+                e.preventDefault();
+                alert('请选择生产工序');
+                processInput.focus();
+                return false;
+            }
+        });
+
+        // 页面加载时聚焦到第一个输入框
+        document.addEventListener('DOMContentLoaded', function () {
+            const firstInput = document.querySelector('input[name="product_code"]');
+            if (firstInput) {
+                firstInput.focus();
+            }
+
+            // 如果已经选择了工序，触发一次change事件
+            if (processSelect.value) {
+                processSelect.dispatchEvent(new Event('change'));
+            }
+        });
+
+        // 检查是否有成功消息，如果有则清空表单
+        document.addEventListener('DOMContentLoaded', function () {
+            const successMessages = document.querySelectorAll('.flash.success');
+            if (successMessages.length > 0) {
+                // 清空表单字段
+                document.querySelector('input[name="product_code"]').value = '';
+                document.querySelector('input[name="number"]').value = '';
+
+                // 重置下拉框
+                document.querySelector('select[name="process"]').selectedIndex = 0;
+                document.getElementById('next-process-select').innerHTML = '<option value="">请选择下一工序（可选）</option>';
+                document.getElementById('group-select').selectedIndex = 0;
+
+                // 清空操作员选择
+                const operatorSelect = document.getElementById('operator-select');
+                operatorSelect.innerHTML = '';
+                const defaultOption = document.createElement('option');
+                defaultOption.value = '';
+                defaultOption.textContent = '请先选择组别';
+                operatorSelect.appendChild(defaultOption);
+
+                // 清空备注
+                document.querySelector('textarea[name="note"]').value = '';
+                
+                // 清空提示
+                nextProcessHint.textContent = '';
+                nextProcessHint.className = 'next-process-hint';
+
+                // 聚焦到产品代码输入框
+                document.querySelector('input[name="product_code"]').focus();
+            }
+        });
+    </script>
+</body>
+
+</html>

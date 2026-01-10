@@ -1,0 +1,1414 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <title>操作员仪表板 - OpenPMS</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            padding: 20px 30px;
+            margin-bottom: 30px;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .btn-logout {
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            transition: opacity 0.3s;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .btn-logout:hover {
+            opacity: 0.8;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto 40px;
+            padding: 0 20px;
+        }
+
+        .welcome-card {
+            background: white;
+            border-radius: 8px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .welcome-title {
+            font-size: 22px;
+            font-weight: 600;
+            color: #1e3c72;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .welcome-title:before {
+            content: "👷";
+            font-size: 20px;
+        }
+
+        .operator-info {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+
+        .info-item {
+            background: #f8f9fa;
+            padding: 10px 15px;
+            border-radius: 6px;
+            border-left: 4px solid #2a5298;
+        }
+
+        .info-label {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        .stat-title {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .stat-number {
+            font-size: 28px;
+            font-weight: bold;
+            color: #2a5298;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 4px;
+            color: white;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.3s;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #0056b3, #004085);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.2);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #ffc107, #fd7e14);
+        }
+
+        .btn-warning:hover {
+            background: linear-gradient(135deg, #fd7e14, #e8590c);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(255, 193, 7, 0.2);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #28a745, #20c997);
+        }
+
+        .btn-success:hover {
+            background: linear-gradient(135deg, #218838, #1ca179);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.2);
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            padding: 18px 25px;
+            font-weight: 600;
+            font-size: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-body {
+            padding: 0;
+            overflow-x: auto;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 800px;
+        }
+
+        .table th {
+            background: #f8f9fa;
+            padding: 16px 20px;
+            text-align: left;
+            font-weight: 600;
+            color: #495057;
+            border-bottom: 2px solid #e9ecef;
+            font-size: 14px;
+            white-space: nowrap;
+        }
+
+        .table td {
+            padding: 16px 20px;
+            border-bottom: 1px solid #e9ecef;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .table tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 50px 20px;
+            color: #6c757d;
+        }
+
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .empty-state h3 {
+            margin-bottom: 10px;
+            color: #495057;
+        }
+
+        .process-badge {
+            background: linear-gradient(135deg, #6c757d, #495057);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        .operator-badge {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+
+        .flash {
+            padding: 12px 20px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            border-left: 4px solid transparent;
+        }
+
+        .flash.success {
+            background: #d4edda;
+            color: #155724;
+            border-left-color: #28a745;
+        }
+
+        .flash.danger {
+            background: #f8d7da;
+            color: #721c24;
+            border-left-color: #dc3545;
+        }
+
+        .flash.warning {
+            background: #fff3cd;
+            color: #856404;
+            border-left-color: #ffc107;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 15px;
+            }
+
+            .header-top {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .operator-info {
+                flex-direction: column;
+            }
+
+            .table {
+                font-size: 13px;
+            }
+
+            .table th,
+            .table td {
+                padding: 12px 15px;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        /* 模态框样式 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            padding: 25px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-header {
+            margin-bottom: 20px;
+            color: #1e3c72;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            font-size: 18px;
+        }
+
+        .modal-body {
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #444;
+            font-size: 14px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #333;
+            background: #fff;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .form-control:focus {
+            border-color: #2a5298;
+            box-shadow: 0 0 0 3px rgba(42, 82, 152, 0.15);
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 10px;
+        }
+
+        .modal-footer button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-confirm {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+        }
+
+        .btn-confirm:hover {
+            background: linear-gradient(135deg, #218838, #1ca179);
+            transform: translateY(-1px);
+        }
+
+        .btn-cancel {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-cancel:hover {
+            background: #5a6268;
+            transform: translateY(-1px);
+        }
+
+        .form-help {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        /* 新增组管理员样式 */
+        .owner-badge {
+            background: linear-gradient(135deg, #ffc107, #fd7e14);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .signed-badge {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            flex-direction: column;
+            text-align: center;
+            min-width: 60px;
+        }
+
+        .signed-badge:before {
+            content: "✓";
+            font-size: 10px;
+        }
+
+        /* 签名画布样式 */
+        .signature-container {
+            margin: 20px 0;
+        }
+
+        canvas {
+            touch-action: none;
+        }
+
+        /* 大模态框 */
+        .modal-content.large {
+            max-width: 800px;
+        }
+
+        .modal-content.medium {
+            max-width: 600px;
+        }
+
+        /* 筛选器样式 */
+        .filter-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+            padding: 0 20px;
+            padding-top: 20px;
+        }
+
+        .filter-label {
+            font-weight: 600;
+            color: #495057;
+            font-size: 14px;
+        }
+
+        .filter-select {
+            padding: 6px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+            font-size: 14px;
+            color: #333;
+            outline: none;
+            transition: border-color 0.3s;
+            min-width: 150px;
+        }
+
+        .filter-select:focus {
+            border-color: #2a5298;
+        }
+
+        .filter-reset {
+            padding: 6px 12px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .filter-reset:hover {
+            background: #5a6268;
+        }
+
+        /* 操作员列样式 */
+        .operator-cell {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .operator-tag {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .current-operator-tag {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        /* 签名预览样式 */
+        .signature-preview {
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: #f8f9fa;
+            text-align: center;
+        }
+
+        .signature-preview img {
+            max-width: 100%;
+            max-height: 100px;
+            border: 1px solid #ccc;
+            background: white;
+        }
+
+        .no-signature {
+            color: #6c757d;
+            font-style: italic;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <div class="header-top">
+            <h1>OpenPMS - 操作员面板</h1>
+            <div class="user-info">
+                <span>欢迎，{{ operator_name }}</span>
+                {% if is_group_owner %}
+                <span
+                    style="background: #ffc107; color: #333; padding: 4px 10px; border-radius: 12px; font-size: 12px;">组管理员</span>
+                {% else %}
+                <span
+                    style="background: #ffc107; color: #333; padding: 4px 10px; border-radius: 12px; font-size: 12px;">操作员</span>
+                {% endif %}
+                <a href="{{ url_for('logout') }}" class="btn-logout">退出登录</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- 消息提示 -->
+        <div class="flash-messages">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
+        </div>
+
+        <!-- 欢迎卡片 -->
+        <div class="welcome-card">
+            <div class="welcome-title">
+                今日生产情况
+            </div>
+            <div class="operator-info">
+                <div class="info-item">
+                    <div class="info-label">操作员姓名</div>
+                    <div class="info-value">{{ operator_name }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">所属班组</div>
+                    <div class="info-value">{{ operator_group }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">日期</div>
+                    <div class="info-value">{{ today.strftime('%Y年%m月%d日') }}</div>
+                </div>
+            </div>
+
+            <!-- 今日统计 -->
+            <div class="stats-row">
+                <div class="stat-card">
+                    <div class="stat-title">今日总产量</div>
+                    <div class="stat-number">{{ total_today }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">生产记录数</div>
+                    <div class="stat-number">{{ today_records|length }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">涉及工序</div>
+                    <div class="stat-number">{{ process_stats|length }}</div>
+                </div>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="action-buttons">
+                <button onclick="showChangePasswordModal()" class="btn btn-warning">
+                    🔒 修改密码
+                </button>
+                <a href="{{ url_for('operator_dashboard') }}" class="btn btn-primary">
+                    🔄 刷新数据
+                </a>
+                {% if is_group_owner %}
+                <button onclick="showSignatureModal()" class="btn btn-warning">
+                    ✒️ 确认签字
+                </button>
+                {% endif %}
+                <a href="{{ url_for('logout') }}" class="btn" style="background: #6c757d;">
+                    🚪 退出登录
+                </a>
+            </div>
+        </div>
+
+        {% if is_group_owner %}
+        <!-- 组管理员专属统计 -->
+        <div class="card">
+            <div class="card-header">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    组内今日生产统计
+                </div>
+            </div>
+            <div class="card-body">
+                <div style="padding: 20px;">
+                    <div class="stats-row">
+                        <div class="stat-card">
+                            <div class="stat-title">组员总数</div>
+                            <div class="stat-number">{{ group_members|length }}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-title">组内总产量</div>
+                            <div class="stat-number">{{ group_total }}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-title">组管理员签字状态</div>
+                            <div class="stat-number">
+                                {% if signed_members > 0 %}
+                                已签字
+                                {% else %}
+                                未签字
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 组员列表 -->
+                    <div style="margin-top: 20px;">
+                        <h4 style="margin-bottom: 15px; color: #495057;">组员列表</h4>
+                        <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                            {% for member in group_members %}
+                            <div id="member-{{ member.id }}" style="display: flex; align-items: center; gap: 8px; padding: 8px 15px; 
+                                        background: #f8f9fa; border-radius: 20px; min-width: 150px;
+                                        justify-content: space-between;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span>👤</span>
+                                    <span style="font-weight: 500;">{{ member.operator_name }}</span>
+                                </div>
+                                <div>
+                                    {% if member.group_owner %}
+                                    <span class="owner-badge">组长</span>
+                                    <!-- 组管理员显示签字状态 -->
+                                    {% if member.signature_file %}
+                                    <span style="margin-left: 5px; color: #28a745; font-size: 12px;">✓</span>
+                                    {% endif %}
+                                    {% else %}
+                                    <span style="color: #6c757d; font-size: 12px; font-weight: 500;">操作员</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- 今日生产记录 -->
+        <div class="card">
+            <div class="card-header">
+                {% if is_group_owner %}
+                组内生产记录
+                {% else %}
+                今日生产记录
+                {% endif %}
+                <span id="recordCount" style="font-size: 13px; font-weight: normal; opacity: 0.9;">
+                    共 {{ today_records|length }} 条记录
+                </span>
+            </div>
+
+            <div class="card-body">
+                {% if today_records %}
+                <!-- 筛选器（仅组管理员显示） -->
+                {% if is_group_owner %}
+                <div class="filter-container">
+                    <span class="filter-label">筛选操作员:</span>
+                    <select id="operatorFilter" class="filter-select">
+                        <option value="all">全部</option>
+                        <option value="{{ operator_name }}">自己 ({{ operator_name }})</option>
+                        {% for member in group_members %}
+                        {% if member.operator_name != operator_name %}
+                        <option value="{{ member.operator_name }}">{{ member.operator_name }}</option>
+                        {% endif %}
+                        {% endfor %}
+                    </select>
+                    <button onclick="resetFilter()" class="filter-reset">重置筛选</button>
+                </div>
+                {% endif %}
+
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>时间</th>
+                            <th>产品代码</th>
+                            <th>工序</th>
+                            <th>数量</th>
+                            {% if is_group_owner %}
+                            <th>操作员</th>
+                            {% endif %}
+                            <th>备注</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recordsTableBody">
+                        {% for record in today_records %}
+                        <tr data-operators="{{ record.operators }}">
+                            <td>{{ record.create_time.strftime('%H:%M') }}</td>
+                            <td>
+                                <strong>{{ record.product_code }}</strong>
+                            </td>
+                            <td>
+                                <span class="process-badge">{{ record.process }}</span>
+                            </td>
+                            <td>
+                                <span style="font-weight: 600; color: #28a745;">{{ record.number }}</span>
+                            </td>
+                            {% if is_group_owner %}
+                            <td>
+                                <div class="operator-cell">
+                                    {% set operators_list = record.operators.split(',') %}
+                                    {% for op in operators_list %}
+                                    {% set op_trimmed = op.strip() %}
+                                    {% if op_trimmed == operator_name %}
+                                    <span class="current-operator-tag">{{ op_trimmed }}</span>
+                                    {% else %}
+                                    <span class="operator-tag">{{ op_trimmed }}</span>
+                                    {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </td>
+                            {% endif %}
+                            <td>
+                                {% if record.note %}
+                                <span style="color: #666; font-size: 13px;">{{ record.note }}</span>
+                                {% else %}
+                                <span style="color: #999; font-size: 13px;">无备注</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="empty-state">
+                    <div class="empty-icon">📋</div>
+                    <h3>暂无今日生产记录</h3>
+                    <p>今天还没有生产记录</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 工序统计 -->
+        {% if process_stats %}
+        <div class="card">
+            <div class="card-header">
+                {% if is_group_owner %}
+                组内工序产量分布
+                {% else %}
+                工序产量分布
+                {% endif %}
+                <span style="font-size: 13px; font-weight: normal; opacity: 0.9;">
+                    共 {{ process_stats|length }} 个工序
+                </span>
+            </div>
+            <div class="card-body">
+                <div style="padding: 20px;">
+                    {% for process, quantity in process_stats.items() %}
+                    <div style="margin-bottom: 15px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                            <span style="font-weight: 500; color: #333;">{{ process }}</span>
+                            <span style="font-weight: 600; color: #28a745;">{{ quantity }}</span>
+                        </div>
+                        {% set max_quantity = process_stats.values()|max %}
+                        {% set width = (quantity / max_quantity * 100) if max_quantity > 0 else 0 %}
+                        <div style="height: 8px; background: #e9ecef; border-radius: 4px; overflow: hidden;">
+                            <div
+                                style="height: 100%; width: {{ width }}%; background: linear-gradient(135deg, #28a745, #20c997); border-radius: 4px;">
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- 系统提示 -->
+        <div
+            style="background: #e8f4fd; color: #004085; padding: 15px; border-radius: 6px; border-left: 4px solid #007bff; margin-top: 20px;">
+            <div style="font-weight: 600; margin-bottom: 5px; display: flex; align-items: center; gap: 8px;">
+                <span>💡</span> 使用说明
+            </div>
+            <div style="font-size: 13px; line-height: 1.5;">
+                <p>1. 本页面仅显示您今天的生产记录</p>
+                <p>2. 如需查看历史记录或详细统计，请联系管理员</p>
+                <p>3. 请妥善保管您的登录密码，定期修改</p>
+                {% if is_group_owner %}
+                <p>4. 您作为组管理员，可以查看组内所有记录并使用筛选功能</p>
+                <p>5. 签字确认后，组内今日生产记录将被锁定</p>
+                <p>6. 您的签字代表全组成员确认今日生产记录</p>
+                <p>7. <strong>只有组管理员需要签字，普通操作员无需签字</strong></p>
+                {% else %}
+                <p>4. 您的生产记录将由组管理员统一确认签字</p>
+                <p>5. 签字后记录将被锁定，无法修改</p>
+                {% endif %}
+                <p>8. 如有任何疑问，请及时联系系统管理员</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 修改密码模态框 -->
+    <div id="changePasswordModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>修改密码</h3>
+            </div>
+            <div class="modal-body">
+                <form id="changePasswordForm">
+                    <div class="form-group">
+                        <label for="oldPassword">原密码</label>
+                        <input type="password" id="oldPassword" class="form-control" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="newPassword">新密码</label>
+                        <input type="password" id="newPassword" class="form-control" required minlength="6">
+                        <div class="form-help">密码长度至少6位</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="confirmPassword">确认新密码</label>
+                        <input type="password" id="confirmPassword" class="form-control" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-confirm" onclick="submitPasswordChange()">确认修改</button>
+                <button type="button" class="btn-cancel" onclick="hideChangePasswordModal()">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 签名模态框 -->
+    <div id="signatureModal" class="modal-overlay">
+        <div class="modal-content medium">
+            <div class="modal-header">
+                <h3>确认签字 - {{ operator_group }}</h3>
+            </div>
+            <div class="modal-body">
+                <div class="signature-instructions"
+                    style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 6px;">
+                    <h4 style="margin-bottom: 10px; color: #495057;">签字说明：</h4>
+                    <ol style="margin-left: 20px; color: #666; font-size: 14px;">
+                        <li>请确认组内今日所有生产记录准确无误</li>
+                        <li>签字后记录将被锁定，无法修改</li>
+                        <li>您的签字将代表全组成员确认今日生产记录</li>
+                        <li>签字需使用鼠标或触摸屏绘制</li>
+                        <li>可以重新签字覆盖之前的签名</li>
+                    </ol>
+                </div>
+
+                <!-- 当前签名预览 -->
+                <!-- 当前签名预览 -->
+                <div id="currentSignaturePreview" style="margin-bottom: 20px;">
+                    <h5 style="margin-bottom: 10px; color: #495057;">当前签名：</h5>
+
+                    {% if operator and operator.group_owner %}
+                    {% if operator.signature_file %}
+                    <div class="signature-preview">
+                        {% if operator.signature_url %}
+                        <img id="signatureImage" src="{{ operator.signature_url }}" alt="当前签名"
+                            style="max-width: 100%; max-height: 100px; border: 1px solid #ccc; background: white;">
+                        {% else %}
+                        <!-- 备用方案：直接构建URL -->
+                        <img id="signatureImage"
+                            src="{{ url_for('serve_signature_file', filename=operator.signature_file) }}" alt="当前签名"
+                            style="max-width: 100%; max-height: 100px; border: 1px solid #ccc; background: white;">
+                        {% endif %}
+
+                        {% if operator.signature_time %}
+                        <div style="font-size: 12px; color: #666; margin-top: 5px;">
+                            上次签字时间：{{ operator.signature_time.strftime('%Y-%m-%d %H:%M:%S') }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <div class="signature-preview">
+                        <div class="no-signature">
+                            暂无签名
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% else %}
+                    <div class="signature-preview">
+                        <div class="no-signature">
+                            只有组管理员可以签名
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="signature-container">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <span style="font-weight: 600;">请在下方绘制签名：</span>
+                        <button onclick="clearSignature()" class="btn"
+                            style="background: #6c757d; padding: 5px 15px; font-size: 13px;">清除重写</button>
+                    </div>
+
+                    <div id="signaturePad"
+                        style="width: 100%; height: 200px; border: 2px solid #ddd; border-radius: 4px; cursor: crosshair; background: white; margin-bottom: 10px;">
+                    </div>
+
+                    <div style="font-size: 12px; color: #666; margin-bottom: 20px; text-align: center;">
+                        <span>请绘制您的签名，然后点击"确认签字"按钮</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="hideSignatureModal()">取消</button>
+                <button type="button" class="btn-confirm" onclick="submitSignature()">确认签字</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 筛选功能
+        function filterRecords() {
+            const selectedOperator = document.getElementById('operatorFilter').value;
+            const rows = document.querySelectorAll('#recordsTableBody tr');
+            let visibleCount = 0;
+
+            rows.forEach(row => {
+                const operators = row.getAttribute('data-operators');
+                const operatorList = operators.split(',').map(op => op.trim());
+
+                if (selectedOperator === 'all' || operatorList.includes(selectedOperator)) {
+                    row.style.display = '';
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            document.getElementById('recordCount').innerText = `共 ${visibleCount} 条记录`;
+        }
+
+        function resetFilter() {
+            document.getElementById('operatorFilter').value = 'all';
+            filterRecords();
+        }
+
+        // 初始化筛选功能
+        document.addEventListener('DOMContentLoaded', function () {
+            const filterSelect = document.getElementById('operatorFilter');
+            if (filterSelect) {
+                filterSelect.addEventListener('change', filterRecords);
+            }
+        });
+
+        // 签名功能
+        let signatureCanvas;
+        let signatureCtx;
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+
+        function showSignatureModal() {
+            console.log('显示签名模态框');
+            const modal = document.getElementById('signatureModal');
+            modal.style.display = 'flex';
+
+            // 初始化签名板
+            setTimeout(() => {
+                initSignaturePad();
+
+                // 不再通过API加载，直接使用模板中的数据
+                // 只需要确保图片元素存在且src正确
+                const signatureImage = document.getElementById('signatureImage');
+                if (signatureImage) {
+                    console.log('签名图片元素存在，src:', signatureImage.src);
+
+                    // 添加错误处理
+                    signatureImage.onerror = function () {
+                        console.error('签名图片加载失败');
+                        this.style.display = 'none';
+                        // 显示替代文本
+                        const previewDiv = this.parentElement;
+                        const errorDiv = document.createElement('div');
+                        errorDiv.className = 'no-signature';
+                        errorDiv.innerHTML = '签名图片无法加载';
+                        previewDiv.appendChild(errorDiv);
+                    };
+
+                    signatureImage.onload = function () {
+                        console.log('签名图片加载成功');
+                    };
+                }
+            }, 100);
+        }
+
+        function hideSignatureModal() {
+            document.getElementById('signatureModal').style.display = 'none';
+            if (signatureCanvas) {
+                clearSignature();
+            }
+        }
+
+        function loadSignaturePreview() {
+            // 获取组管理员的签名预览
+            fetch('/api/operator/signatures')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.signatures && data.signatures.length > 0) {
+                        const groupOwner = data.signatures.find(s => s.is_group_owner);
+                        if (groupOwner && groupOwner.has_signature) {
+                            // 更新签名预览
+                            document.getElementById('signatureImage').src = `/static/signatures/signature_${groupOwner.operator_id}_latest.png`;
+                            document.getElementById('signatureImage').style.display = 'block';
+                            document.getElementById('noSignatureText').style.display = 'none';
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('加载签名预览失败:', error);
+                });
+        }
+
+        function initSignaturePad() {
+            console.log('初始化签名板');
+            const container = document.getElementById('signaturePad');
+            container.innerHTML = '';
+
+            const canvas = document.createElement('canvas');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            canvas.style.width = '100%';
+            canvas.style.height = '100%';
+            canvas.style.backgroundColor = 'white';
+
+            container.appendChild(canvas);
+
+            signatureCanvas = canvas;
+            signatureCtx = canvas.getContext('2d');
+
+            // 设置画布样式
+            signatureCtx.lineWidth = 2;
+            signatureCtx.lineCap = 'round';
+            signatureCtx.lineJoin = 'round';
+            signatureCtx.strokeStyle = '#333';
+
+            // 添加事件监听器
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseout', stopDrawing);
+
+            // 触摸屏支持
+            canvas.addEventListener('touchstart', handleTouchStart);
+            canvas.addEventListener('touchmove', handleTouchMove);
+            canvas.addEventListener('touchend', stopDrawing);
+
+            console.log('签名板初始化完成');
+        }
+
+        function handleTouchStart(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = signatureCanvas.getBoundingClientRect();
+            lastX = touch.clientX - rect.left;
+            lastY = touch.clientY - rect.top;
+            isDrawing = true;
+        }
+
+        function handleTouchMove(e) {
+            if (!isDrawing) return;
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = signatureCanvas.getBoundingClientRect();
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+            drawLine(x, y);
+        }
+
+        function startDrawing(e) {
+            isDrawing = true;
+            const rect = signatureCanvas.getBoundingClientRect();
+            lastX = e.clientX - rect.left;
+            lastY = e.clientY - rect.top;
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            e.preventDefault();
+            const rect = signatureCanvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            drawLine(x, y);
+        }
+
+        function drawLine(x, y) {
+            signatureCtx.beginPath();
+            signatureCtx.moveTo(lastX, lastY);
+            signatureCtx.lineTo(x, y);
+            signatureCtx.stroke();
+            [lastX, lastY] = [x, y];
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+        }
+
+        function clearSignature() {
+            if (signatureCtx) {
+                signatureCtx.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+            }
+        }
+
+        function submitSignature() {
+            console.log('提交签名');
+
+            // 检查是否有签名
+            let isEmpty = true;
+            if (signatureCanvas) {
+                const imageData = signatureCtx.getImageData(0, 0, signatureCanvas.width, signatureCanvas.height);
+                const data = imageData.data;
+                for (let i = 0; i < data.length; i += 4) {
+                    if (data[i + 3] > 0) { // 检查alpha通道
+                        isEmpty = false;
+                        break;
+                    }
+                }
+            }
+
+            if (isEmpty) {
+                alert('请先绘制签名！');
+                return;
+            }
+
+            const signatureData = signatureCanvas.toDataURL('image/png');
+
+            // 显示确认对话框
+            if (!confirm('确认要提交签名吗？您的签字将代表全组成员确认今日生产记录。')) {
+                return;
+            }
+
+            // 显示加载状态
+            const confirmBtn = document.querySelector('#signatureModal .btn-confirm');
+            const originalText = confirmBtn.innerHTML;
+            confirmBtn.innerHTML = '签字中...';
+            confirmBtn.disabled = true;
+
+            fetch('/operator/group/sign', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `signature=${encodeURIComponent(signatureData)}`
+            })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('签字响应:', data);
+                    if (data.success) {
+                        alert('签字确认成功！您已代表全组成员确认今日生产记录。');
+                        hideSignatureModal();
+                        // 刷新页面显示更新
+                        window.location.reload();
+                    } else {
+                        alert('签字失败：' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('签字请求失败:', error);
+                    alert('签字请求失败，请稍后重试');
+                })
+                .finally(() => {
+                    // 恢复按钮状态
+                    confirmBtn.innerHTML = originalText;
+                    confirmBtn.disabled = false;
+                });
+        }
+
+        // 修改密码功能
+        function showChangePasswordModal() {
+            console.log('显示修改密码模态框');
+            document.getElementById('changePasswordModal').style.display = 'flex';
+            document.getElementById('oldPassword').focus();
+        }
+
+        function hideChangePasswordModal() {
+            document.getElementById('changePasswordModal').style.display = 'none';
+            document.getElementById('changePasswordForm').reset();
+        }
+
+        function submitPasswordChange() {
+            console.log('提交密码修改');
+            const oldPassword = document.getElementById('oldPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            // 验证
+            if (newPassword !== confirmPassword) {
+                alert('新密码和确认密码不一致！');
+                return false;
+            }
+
+            if (newPassword.length < 6) {
+                alert('新密码长度至少6位！');
+                return false;
+            }
+
+            // 显示加载状态
+            const confirmBtn = document.querySelector('#changePasswordModal .btn-confirm');
+            const originalText = confirmBtn.innerHTML;
+            confirmBtn.innerHTML = '处理中...';
+            confirmBtn.disabled = true;
+
+            // 发送请求
+            fetch('/operator/change_password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `old_password=${encodeURIComponent(oldPassword)}&new_password=${encodeURIComponent(newPassword)}&confirm_password=${encodeURIComponent(confirmPassword)}`
+            })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('密码修改响应:', data);
+                    if (data.success) {
+                        alert('密码修改成功！');
+                        hideChangePasswordModal();
+                    } else {
+                        alert('密码修改失败：' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('密码修改请求失败:', error);
+                    alert('请求失败：请检查网络连接');
+                })
+                .finally(() => {
+                    confirmBtn.innerHTML = originalText;
+                    confirmBtn.disabled = false;
+                });
+
+            return false;
+        }
+
+        // 点击模态框外部关闭
+        document.addEventListener('DOMContentLoaded', function () {
+            console.log('页面加载完成，绑定事件监听器');
+
+            // 绑定模态框外部点击关闭事件
+            const modals = document.querySelectorAll('.modal-overlay');
+            modals.forEach(modal => {
+                modal.addEventListener('click', function (e) {
+                    if (e.target === this) {
+                        console.log('点击模态框外部，关闭');
+                        this.style.display = 'none';
+
+                        // 如果是签名模态框，清除签名
+                        if (this.id === 'signatureModal' && signatureCanvas) {
+                            clearSignature();
+                        }
+
+                        // 如果是密码修改模态框，重置表单
+                        if (this.id === 'changePasswordModal') {
+                            document.getElementById('changePasswordForm').reset();
+                        }
+                    }
+                });
+            });
+
+            // 绑定回车键提交表单
+            document.addEventListener('keypress', function (e) {
+                if (e.key === 'Enter') {
+                    // 密码修改模态框中的回车提交
+                    if (document.getElementById('changePasswordModal').style.display === 'flex') {
+                        submitPasswordChange();
+                    }
+                }
+            });
+
+            {% if is_group_owner %}
+            console.log('当前用户是组管理员');
+            {% endif %}
+
+            // 检查是否有初始错误消息
+            const flashes = document.querySelectorAll('.flash');
+            if (flashes.length > 0) {
+                console.log('有Flash消息:', flashes.length);
+                // 5秒后自动隐藏flash消息
+                setTimeout(() => {
+                    flashes.forEach(flash => {
+                        flash.style.opacity = '0';
+                        flash.style.transition = 'opacity 0.5s';
+                        setTimeout(() => {
+                            flash.style.display = 'none';
+                        }, 500);
+                    });
+                }, 5000);
+            }
+        });
+
+        // 自动刷新页面（每5分钟）
+        setTimeout(function () {
+            console.log('自动刷新页面');
+            window.location.reload();
+        }, 5 * 60 * 1000);
+
+        // 添加全局错误处理
+        window.addEventListener('error', function (e) {
+            console.error('全局错误:', e.error);
+            console.error('错误位置:', e.filename, ':', e.lineno, ':', e.colno);
+        });
+    </script>
+</body>
+
+</html>
