@@ -138,6 +138,18 @@
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
             overflow: hidden;
             margin-bottom: 30px;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .card-header {
@@ -152,9 +164,20 @@
             padding: 25px;
         }
 
-        /* 表单样式 */
+        /* 表单样式 - 新增网格布局 */
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 25px;
+        }
+
         .form-group {
             margin-bottom: 25px;
+        }
+
+        .form-group-full {
+            grid-column: 1 / -1;
         }
 
         .form-label {
@@ -165,9 +188,13 @@
             font-size: 14px;
         }
 
+        .form-label.required::after {
+            content: " *";
+            color: #dc3545;
+        }
+
         .form-control {
             width: 100%;
-            max-width: 400px;
             padding: 12px 15px;
             border: 1px solid #e0e0e0;
             border-radius: 6px;
@@ -195,6 +222,7 @@
 
         .form-actions {
             display: flex;
+            justify-content: flex-end;
             gap: 12px;
             margin-top: 30px;
             padding-top: 20px;
@@ -211,6 +239,18 @@
             border-radius: 4px;
             margin-bottom: 10px;
             border-left: 4px solid transparent;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
         }
 
         .flash.success {
@@ -229,6 +269,22 @@
             background: #fff3cd;
             color: #856404;
             border-left-color: #ffc107;
+        }
+
+        /* 示例文本样式 */
+        .example-text {
+            background: #f8f9fa;
+            border-left: 3px solid #007bff;
+            padding: 10px 15px;
+            border-radius: 4px;
+            margin-top: 8px;
+            font-size: 13px;
+            color: #495057;
+            line-height: 1.4;
+        }
+
+        .example-text strong {
+            color: #1e3c72;
         }
 
         /* 响应式调整 */
@@ -252,8 +308,9 @@
                 flex-wrap: wrap;
             }
 
-            .form-control {
-                max-width: 100%;
+            .form-row {
+                grid-template-columns: 1fr;
+                gap: 15px;
             }
 
             .form-actions {
@@ -263,6 +320,16 @@
             .form-actions .btn {
                 width: 100%;
                 justify-content: center;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .form-actions {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
             }
         }
 
@@ -279,20 +346,40 @@
             margin-left: 10px;
         }
 
-		/* 退出登录按钮 - 更新为纯文本样式 */
-		.btn-logout {
-			color: white;
-			text-decoration: none;
-			font-size: 14px;
-			transition: opacity 0.3s;
-			padding: 4px 8px;
-			border-radius: 4px;
-		}
+        /* 退出登录按钮 - 更新为纯文本样式 */
+        .btn-logout {
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            transition: opacity 0.3s;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
 
-		.btn-logout:hover {
-			opacity: 0.8;
-			background: rgba(255, 255, 255, 0.1);
-		}
+        .btn-logout:hover {
+            opacity: 0.8;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* 新增：表单帮助文本 */
+        .form-help {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        /* 新增：过程编号字段样式 */
+        .process-number-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .process-number-prefix {
+            font-weight: 600;
+            color: #495057;
+            white-space: nowrap;
+        }
     </style>
 </head>
 
@@ -329,6 +416,10 @@
             {% if has_perm('manage_users') %}
             <a href="{{ url_for('user_list') }}" class="nav-btn">用户管理</a>
             {% endif %}
+
+            {% if has_perm('manage_system') %}
+            <a href="{{ url_for('system_management') }}" class="nav-btn">系统管理</a>
+            {% endif %}
         </div>
     </div>
 
@@ -362,18 +453,32 @@
             </div>
 
             <div class="card-body">
-                <form method="post">
-                    <div class="form-group">
-                        <label class="form-label">工序名称</label>
-                        <input type="text" name="process_name" class="form-control" required
-                            placeholder="输入工序名称，例如：焊接1、装配2、涂装3">
-                        <div class="form-hint">
-                            请输入清晰、简洁的工序名称，便于识别和管理
+                <form method="post" id="add-process-form">
+                    <!-- 表单行 -->
+                    <div class="form-row">
+                        <!-- 工序名称 -->
+                        <div class="form-group form-group-full">
+                            <label class="form-label required">工序名称</label>
+                            <input type="text" name="process_name" class="form-control" required
+                                placeholder="输入工序名称，例如：焊接、装配、涂装、质检"
+                                id="process-name">
+                            <div class="form-hint">
+                                请输入清晰、简洁的工序名称，便于识别和管理
+                            </div>
+                            
+                            <!-- 示例 -->
+                            <div class="example-text">
+                                <strong>命名建议：</strong><br>
+                                1. 按工艺类型：焊接、装配、喷漆、电镀、质检<br>
+                                2. 按生产阶段：粗加工、精加工、组装、调试、包装<br>
+                                3. 按工序顺序：工序1、工序2、工序3<br>
+                                4. 按设备类型：CNC加工、注塑成型、激光切割
+                            </div>
                         </div>
                     </div>
 
                     <div class="form-actions">
-                        <button type="submit" class="btn btn-submit">保存工序</button>
+                        <button type="submit" class="btn btn-submit" id="submit-btn">保存工序</button>
                         <a href="{{ url_for('process_list') }}" class="btn btn-back">取消</a>
                     </div>
                 </form>
@@ -382,17 +487,106 @@
 
         <!-- 注意事项 -->
         <div
-            style="background: #fff3cd; color: #856404; padding: 15px; border-radius: 6px; border-left: 4px solid #ffc107; margin-top: 20px;">
+            style="background: #e8f4fd; color: #004085; padding: 15px; border-radius: 6px; border-left: 4px solid #007bff; margin-top: 20px;">
             <div style="font-weight: 600; margin-bottom: 5px; display: flex; align-items: center; gap: 8px;">
-                <span>💡</span> 填写提示
+                <span>💡</span> 工序创建指南
             </div>
             <div style="font-size: 13px; line-height: 1.5;">
                 <p>1. 工序名称应简洁明了，便于在生产记录中选择。</p>
-                <p>2. 建议按照生产流程的顺序命名，如"工序1-焊接"、"工序2-装配"。</p>
-                <p>3. 添加后可在工序管理页面查看和编辑。</p>
+                <p>2. 建议按照生产流程的顺序命名，如"焊接"、"装配"、"喷漆"。</p>
+                <p>3. 同一类型的工序使用相似的命名规则，便于分类管理。</p>
+                <p>4. 避免使用过于宽泛的名称，如"加工"、"处理"等。</p>
+                <p>5. 添加后可在工序管理页面查看、编辑和删除。</p>
             </div>
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const processNameInput = document.getElementById('process-name');
+            const submitBtn = document.getElementById('submit-btn');
+            const form = document.getElementById('add-process-form');
+
+            // 页面加载时自动聚焦到工序名称输入框
+            if (processNameInput) {
+                setTimeout(() => {
+                    processNameInput.focus();
+                }, 100);
+            }
+
+            // 实时表单验证
+            function validateForm() {
+                const processName = processNameInput.value.trim();
+                
+                if (processName.length === 0) {
+                    return false;
+                }
+                
+                if (processName.length > 50) {
+                    return false;
+                }
+                
+                return true;
+            }
+
+            // 实时更新提交按钮状态
+            function updateSubmitButton() {
+                submitBtn.disabled = !validateForm();
+            }
+
+            processNameInput.addEventListener('input', updateSubmitButton);
+
+            // 表单提交验证
+            form.addEventListener('submit', function(e) {
+                const processName = processNameInput.value.trim();
+                
+                if (!validateForm()) {
+                    e.preventDefault();
+                    alert('请检查表单填写是否正确：\n1. 工序名称不能为空\n2. 工序名称长度不能超过50个字符');
+                    processNameInput.focus();
+                    return false;
+                }
+                
+                // 确认提交
+                if (!confirm(`确定要添加工序 "${processName}" 吗？`)) {
+                    e.preventDefault();
+                    return false;
+                }
+                
+                return true;
+            });
+
+            // 为表单控件添加焦点效果
+            const formControls = document.querySelectorAll('.form-control');
+            formControls.forEach(control => {
+                control.addEventListener('focus', function () {
+                    this.style.borderColor = '#2a5298';
+                    this.style.boxShadow = '0 0 0 3px rgba(42, 82, 152, 0.1)';
+                });
+
+                control.addEventListener('blur', function () {
+                    this.style.borderColor = '#e0e0e0';
+                    this.style.boxShadow = 'none';
+                });
+            });
+
+            // 页面加载时自动处理已存在的flash消息
+            const flashMessages = document.querySelectorAll('.flash');
+            flashMessages.forEach(flash => {
+                setTimeout(() => {
+                    flash.style.animation = 'slideOut 0.3s ease-out';
+                    setTimeout(() => {
+                        if (flash.parentNode) {
+                            flash.parentNode.removeChild(flash);
+                        }
+                    }, 300);
+                }, 3000);
+            });
+
+            // 初始禁用提交按钮
+            updateSubmitButton();
+        });
+    </script>
 </body>
 
 </html>

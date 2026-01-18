@@ -364,7 +364,7 @@
         <div class="login-header">
             <div class="decoration dec-1">🏭</div>
             <div class="decoration dec-2">⚙️</div>
-            <h1>𝙊𝙥𝙚𝙣𝙋𝙈𝙎</h1>
+            <h1>OpenPMS</h1>
             <div class="login-subtitle">高效 · 安全 · 开源的生产数据管理平台</div>
         </div>
 
@@ -406,8 +406,6 @@
                         <span class="remember-checkbox"></span>
                         <span>记住我</span>
                     </label>
-                    <!-- 如果需要忘记密码功能，可以取消注释 -->
-                    <!-- <a href="#" class="forgot-password">忘记密码？</a> -->
                 </div>
 
                 <button type="submit" class="btn-login" id="login-btn">
@@ -507,14 +505,6 @@
                     (activeElement.type === 'text' || activeElement.type === 'password')) {
                     loginForm.requestSubmit();
                 }
-            }
-        });
-
-        // 用户名输入框回车跳转到密码框
-        document.getElementById('username-input').addEventListener('keydown', function (e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                passwordInput.focus();
             }
         });
     </script>

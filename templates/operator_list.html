@@ -143,6 +143,30 @@
             box-shadow: 0 4px 8px rgba(220, 53, 69, 0.2);
         }
 
+        .btn-setowner {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            padding: 6px 12px;
+            font-size: 13px;
+        }
+
+        .btn-setowner:hover {
+            background: linear-gradient(135deg, #218838, #1ca179);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.2);
+        }
+
+        .btn-removeowner {
+            background: linear-gradient(135deg, #ffc107, #fd7e14);
+            padding: 6px 12px;
+            font-size: 13px;
+        }
+
+        .btn-removeowner:hover {
+            background: linear-gradient(135deg, #fd7e14, #e8590c);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(255, 193, 7, 0.2);
+        }
+
         .btn-delete-group {
             background: linear-gradient(135deg, #fd7e14, #e8590c);
             padding: 6px 12px;
@@ -396,20 +420,6 @@
             margin-right: 8px;
         }
 
-        /* 操作员状态指示器 */
-        .status-indicator {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            margin-right: 8px;
-        }
-
-        .status-active {
-            background-color: #28a745;
-            box-shadow: 0 0 5px rgba(40, 167, 69, 0.5);
-        }
-
         /* 组标签 */
         .group-label {
             background: linear-gradient(135deg, #007bff, #0056b3);
@@ -617,27 +627,6 @@
             border-left: 4px solid #2a5298;
         }
 
-        /* 新增样式：组管理员徽章和签字徽章 */
-        .owner-badge {
-            background: linear-gradient(135deg, #ffc107, #fd7e14);
-            color: #333;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 600;
-            display: inline-block;
-        }
-
-        .signed-badge {
-            background: linear-gradient(135deg, #28a745, #20c997);
-            color: white;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 600;
-            display: inline-block;
-        }
-
         /* 折叠/展开按钮 */
         .toggle-details-btn {
             background: transparent;
@@ -726,14 +715,260 @@
             margin-top: 8px;
         }
         
-        /* 组管理员行样式 */
-        .group-owner-row td {
-            background-color: #fffcf5 !important;
-            border-left: 4px solid #ffc107 !important;
-        }
-        
-        .group-owner-row:hover td {
+        /* 组管理员行样式 - 仿照users.html中的当前用户行样式 */
+        .group-owner-row {
             background-color: #fff8e1 !important;
+            border-left: 3px solid #ffc701 !important;
+        }
+
+        /* 确保组管理员行的单元格也继承样式 */
+        .group-owner-row td {
+            background-color: inherit !important;
+        }
+
+        /* 当前用户标记 - 用于组管理员标签 */
+        .current-user-tag {
+            background: #007bff;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            margin-left: 8px;
+        }
+
+        /* 操作员状态指示器 */
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-active {
+            background-color: #28a745;
+            box-shadow: 0 0 5px rgba(40, 167, 69, 0.5);
+        }
+
+        /* 详情表格优化 - 新增样式 */
+
+        /* 调整表格列宽比例 */
+        .group-details-table th:nth-child(1),  /* ID列 */
+        .group-details-table td:nth-child(1) {
+            width: 8%;
+            text-align: center;
+        }
+
+        .group-details-table th:nth-child(2),  /* 操作员列 */
+        .group-details-table td:nth-child(2) {
+            width: 22%;
+            min-width: 120px;
+        }
+
+        .group-details-table th:nth-child(3),  /* 签字状态列 */
+        .group-details-table td:nth-child(3) {
+            width: 22%;
+            min-width: 140px;
+        }
+
+        .group-details-table th:nth-child(4),  /* 创建时间列 */
+        .group-details-table td:nth-child(4) {
+            width: 20%;
+            min-width: 130px;
+        }
+
+        .group-details-table th:nth-child(5),  /* 操作列 */
+        .group-details-table td:nth-child(5) {
+            width: 28%;
+            min-width: 200px;
+        }
+
+        /* 优化操作列按钮布局 */
+        .action-buttons-small {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: flex-start;
+        }
+
+        /* 操作按钮优化 */
+        .btn-small {
+            padding: 5px 10px;
+            font-size: 11px;
+            border-radius: 3px;
+            text-decoration: none;
+            color: white;
+            border: none;
+            cursor: pointer;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 26px;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+
+        /* 签字状态优化 */
+        .signature-status {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
+        }
+
+        .status-text {
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .status-icon {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .status-icon.signed-today {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-icon.signed-other {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .status-icon.not-signed {
+            background: #f8f9fa;
+            color: #6c757d;
+            border: 1px solid #e9ecef;
+        }
+
+        /* 操作员名字显示优化 */
+        .operator-name-cell {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .operator-name {
+            font-weight: 500;
+            color: #333;
+        }
+
+        /* ID徽章优化 */
+        .operator-id-badge {
+            background: linear-gradient(135deg, #6c757d, #495057);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            display: inline-block;
+            min-width: 40px;
+            text-align: center;
+        }
+
+        /* 表格内容垂直居中 */
+        .group-details-table td {
+            vertical-align: middle;
+            padding: 12px 15px;
+        }
+
+        /* 响应式优化 - 小屏幕表格调整 */
+        @media (max-width: 992px) {
+            .group-details-table {
+                font-size: 12px;
+            }
+            
+            .group-details-table th,
+            .group-details-table td {
+                padding: 10px 12px;
+            }
+            
+            .btn-small {
+                padding: 4px 8px;
+                font-size: 10px;
+                min-height: 24px;
+            }
+            
+            .operator-id-badge {
+                font-size: 10px;
+                padding: 3px 6px;
+                min-width: 36px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .group-details-table th:nth-child(4), /* 隐藏创建时间 */
+            .group-details-table td:nth-child(4) {
+                display: none;
+            }
+            
+            .group-details-table th:nth-child(1),
+            .group-details-table td:nth-child(1) {
+                width: 10%;
+            }
+            
+            .group-details-table th:nth-child(2),
+            .group-details-table td:nth-child(2) {
+                width: 25%;
+            }
+            
+            .group-details-table th:nth-child(3),
+            .group-details-table td:nth-child(3) {
+                width: 30%;
+            }
+            
+            .group-details-table th:nth-child(5),
+            .group-details-table td:nth-child(5) {
+                width: 35%;
+            }
+            
+            .action-buttons-small {
+                gap: 4px;
+            }
+        }
+
+        /* 表格行悬停效果增强 */
+        .group-details-table tr:hover {
+            background-color: #f8f9fa;
+            transform: translateY(-1px);
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        /* 组管理员行特殊样式 */
+        .group-owner-row {
+            background: linear-gradient(90deg, rgba(42, 82, 152, 0.05), rgba(42, 82, 152, 0.02)) !important;
+            border-left: 3px solid #2a5298 !important;
+        }
+
+        /* 表格边框和分隔线优化 */
+        .group-details-table {
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .group-details-table th {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        .group-details-table td {
+            border-bottom: 1px solid #f1f3f5;
+        }
+
+        .group-details-table tr:last-child td {
+            border-bottom: none;
         }
     </style>
 </head>
@@ -769,6 +1004,10 @@
 
             {% if has_perm('manage_users') %}
             <a href="{{ url_for('user_list') }}" class="nav-btn">用户管理</a>
+            {% endif %}
+
+            {% if has_perm('manage_system') %}
+            <a href="{{ url_for('system_management') }}" class="nav-btn">系统管理</a>
             {% endif %}
         </div>
     </div>
@@ -856,9 +1095,6 @@
                             {{ group_name }}
                             <span class="operator-count">{{ operator_names|length }} 人</span>
                             {% if group_owner %}
-                            <span style="margin-left: 10px; font-size: 12px; color: #fd7e14; font-weight: 600;">
-                                组管理员: {{ group_owner.operator_name }}
-                            </span>
                             {% endif %}
                         </div>
                         <div class="group-actions">
@@ -899,43 +1135,58 @@
                         <thead>
                             <tr>
                                 <th>ID</th>
-                                <th>操作员姓名</th>
-                                <th>组管理员状态</th>
-                                <th>签名状态</th>
+                                <th>操作员</th>
+                                <th>签字状态</th>
                                 <th>创建时间</th>
                                 <th>操作</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for operator in group_operators %}
-                            <tr {% if operator.group_owner %}class="group-owner-row"{% endif %}>
+                            <tr {% if operator.group_owner %}class="group-owner-row" style="background-color: #e8f4fd; border-left: 3px solid #007bff;"{% endif %}>
                                 <td>
                                     <span class="operator-id-badge">#{{ operator.id }}</span>
                                 </td>
                                 <td>
-                                    <span class="status-indicator status-active"></span>
-                                    {% if operator.group_owner %}
-                                    <span style="font-weight: 600; color: #fd7e14;">
-                                        {{ operator.operator_name }}
-                                    </span>
-                                    {% else %}
-                                    {{ operator.operator_name }}
-                                    {% endif %}
+                                    <div class="operator-name-cell">
+                                        <span class="status-indicator status-active"></span>
+                                        <span class="operator-name">
+                                            {{ operator.operator_name }}
+                                            {% if operator.group_owner %}
+                                                <span class="current-user-tag">组管理员</span>
+                                            {% endif %}
+                                        </span>
+                                    </div>
                                 </td>
                                 <td>
-                                    {% if operator.group_owner %}
-                                    <span class="owner-badge">组管理员</span>
-                                    {% else %}
-                                    <span style="color: #6c757d; font-size: 12px;">组员</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    <!-- 修复：使用 signature_file 而不是 signature -->
-                                    {% if operator.signature_file %}
-                                    <span class="signed-badge">已签字</span>
-                                    {% else %}
-                                    <span style="color: #6c757d; font-size: 12px;">未签字</span>
-                                    {% endif %}
+                                    <div class="signature-status">
+                                        {% if operator.signature_file %}
+                                            {% if operator.signature_time and operator.signature_time.date() == today %}
+                                                <div class="status-icon signed-today">
+                                                    <span>✅</span>
+                                                    <span class="status-text">今日已签字
+                                                    {% if operator.signature_time %}
+                                                    {{ operator.signature_time.strftime('%H:%M') }}
+                                                    </span>
+                                                </div>
+                                                {% endif %}
+                                            {% else %}
+                                                {% if operator.signature_time %}
+                                                <div class="status-icon signed-other">
+                                                    <span>📅</span>
+                                                    <span class="status-text">
+                                                        上次：{{ operator.signature_time.strftime('%Y-%m-%d') }}
+                                                    </span>
+                                                </div>
+                                                {% endif %}
+                                            {% endif %}
+                                        {% else %}
+                                            <div class="status-icon not-signed">
+                                                <span>⭕</span>
+                                                <span class="status-text">未签字</span>
+                                            </div>
+                                        {% endif %}
+                                    </div>
                                 </td>
                                 <td>{{ operator.create_time.strftime('%Y-%m-%d %H:%M') }}</td>
                                 <td>
@@ -947,12 +1198,12 @@
                                         
                                         {% if operator.group_owner %}
                                         <button onclick="revokeGroupOwner({{ operator.id }}, '{{ operator.operator_name }}')" 
-                                                class="btn-small" style="background: linear-gradient(135deg, #ffc107, #fd7e14);">
+                                                class="btn-small btn-removeowner">
                                             移除管理
                                         </button>
                                         {% else %}
                                         <button onclick="grantGroupOwner({{ operator.id }}, '{{ operator.operator_name }}', '{{ operator.group_name }}')" 
-                                                class="btn-small" style="background: linear-gradient(135deg, #28a745, #20c997);">
+                                                class="btn-small btn-setowner">
                                             设为管理
                                         </button>
                                         {% endif %}
@@ -1366,6 +1617,22 @@
                     }
                     {% endif %}
                 });
+            });
+        });
+
+        // 页面加载时自动处理已存在的flash消息
+        document.addEventListener('DOMContentLoaded', function() {
+            // 为所有flash消息添加自动关闭功能
+            const flashMessages = document.querySelectorAll('.flash');
+            flashMessages.forEach(flash => {
+                setTimeout(() => {
+                    flash.style.animation = 'slideOut 0.3s ease-out';
+                    setTimeout(() => {
+                        if (flash.parentNode) {
+                            flash.parentNode.removeChild(flash);
+                        }
+                    }, 300);
+                }, 3000);
             });
         });
     </script>

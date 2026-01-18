@@ -569,6 +569,10 @@
             <a href="{{ url_for('user_list') }}" class="nav-btn active">用户管理 <span
                     class="edit-indicator">编辑用户</span></a>
             {% endif %}
+
+            {% if has_perm('manage_system') %}
+            <a href="{{ url_for('system_management') }}" class="nav-btn">系统管理</a>
+            {% endif %}
         </div>
     </div>
 
@@ -607,10 +611,10 @@
                 <!-- 显示具体权限 -->
                     <div style="margin-top: 5px; font-size: 12px;">
                         {% if current_user.can_add_record %}<span class="permission-badge">📝添加记录</span>{% endif %}
-                        {% if current_user.can_manage_users %}<span class="permission-badge">👥用户管理</span>{% endif %}
                         {% if current_user.can_manage_process %}<span class="permission-badge">🛠️工序管理</span>{% endif %}
-                        {% if current_user.can_manage_operator %}<span class="permission-badge">👷操作员管理</span>{% endif
-                        %}
+                        {% if current_user.can_manage_operator %}<span class="permission-badge">👷操作员管理</span>{% endif%}
+                        {% if current_user.can_manage_users %}<span class="permission-badge">👥用户管理</span>{% endif %}
+                        {% if current_user.can_manage_system %}<span class="permission-badge">⚙️系统管理</span>{% endif %}
                     </div>
             </div>
         </div>
@@ -739,19 +743,6 @@
                             </div>
                             {% endif %}
 
-                            {% if 'manage_users' in grantable_permissions %}
-                            <div class="checkbox-group">
-                                <label class="checkbox-label {% if user.id == current_user.id %}disabled{% endif %}">
-                                    <input type="checkbox" name="can_manage_users" id="can_manage_users" {% if
-                                        user.can_manage_users %}checked{% endif %} 
-                                        {% if user.id == current_user.id %}disabled{% endif %}>
-                                    <span class="checkbox-custom {% if user.id == current_user.id %}disabled{% endif %}"></span>
-                                    <span>用户管理</span>
-                                    <span style="font-size: 12px; color: #666;">（允许管理用户账号）</span>
-                                </label>
-                            </div>
-                            {% endif %}
-
                             {% if 'manage_process' in grantable_permissions %}
                             <div class="checkbox-group">
                                 <label class="checkbox-label {% if user.id == current_user.id %}disabled{% endif %}">
@@ -774,6 +765,30 @@
                                     <span class="checkbox-custom {% if user.id == current_user.id %}disabled{% endif %}"></span>
                                     <span>操作员管理</span>
                                     <span style="font-size: 12px; color: #666;">（允许管理操作员）</span>
+                                </label>
+                            </div>
+                            {% endif %}
+
+                            {% if 'manage_users' in grantable_permissions %}
+                            <div class="checkbox-group">
+                                <label class="checkbox-label {% if user.id == current_user.id %}disabled{% endif %}">
+                                    <input type="checkbox" name="can_manage_users" id="can_manage_users" {% if
+                                        user.can_manage_users %}checked{% endif %} 
+                                        {% if user.id == current_user.id %}disabled{% endif %}>
+                                    <span class="checkbox-custom {% if user.id == current_user.id %}disabled{% endif %}"></span>
+                                    <span>用户管理</span>
+                                    <span style="font-size: 12px; color: #666;">（允许管理用户账号）</span>
+                                </label>
+                            </div>
+                            {% endif %}
+
+                            {% if 'manage_system' in grantable_permissions %}
+                            <div class="checkbox-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="can_manage_system" id="can_manage_system">
+                                    <span class="checkbox-custom"></span>
+                                    <span>系统管理</span>
+                                    <span style="font-size: 12px; color: #666;">（允许管理系统设置和备份）</span>
                                 </label>
                             </div>
                             {% endif %}
@@ -962,6 +977,22 @@
                 usernameInput.select();
             }
             {% endif %}
+        });
+
+        // 页面加载时自动处理已存在的flash消息
+        document.addEventListener('DOMContentLoaded', function() {
+            // 为所有flash消息添加自动关闭功能
+            const flashMessages = document.querySelectorAll('.flash');
+            flashMessages.forEach(flash => {
+                setTimeout(() => {
+                    flash.style.animation = 'slideOut 0.3s ease-out';
+                    setTimeout(() => {
+                        if (flash.parentNode) {
+                            flash.parentNode.removeChild(flash);
+                        }
+                    }, 300);
+                }, 3000);
+            });
         });
     </script>
 </body>

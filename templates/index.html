@@ -184,18 +184,6 @@
 			display: inline-block;
 		}
 
-		.btn-add {
-			background: #28a745;
-			color: white;
-			border: none;
-			padding: 10px 25px;
-			border-radius: 4px;
-			cursor: pointer;
-			font-size: 15px;
-			text-decoration: none;
-			display: inline-block;
-		}
-
 		/* 统计卡片 */
 		.stats-cards {
 			display: grid;
@@ -223,12 +211,13 @@
 			color: #2a5298;
 		}
 
-		/* 图表容器 */
+		/* 图表容器 - 修复：确保两个图表底部对齐 */
 		.chart-container {
 			display: grid;
 			grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
 			gap: 30px;
 			margin-bottom: 40px;
+			align-items: stretch; /* 关键修改：拉伸对齐 */
 		}
 
 		.chart-box {
@@ -236,6 +225,10 @@
 			padding: 25px;
 			border-radius: 8px;
 			box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+			display: flex;
+			flex-direction: column;
+			min-height: 500px; /* 增加最小高度 */
+			height: auto; /* 自动高度 */
 		}
 
 		.chart-title {
@@ -247,7 +240,8 @@
 
 		.chart-wrapper {
 			position: relative;
-			height: 300px;
+			flex: 1 0 350px; /* 固定基础高度但可扩展 */
+			min-height: 350px;
 		}
 
 		/* 表格区域 */
@@ -275,7 +269,6 @@
 			width: 100%;
 			border-collapse: collapse;
 			table-layout: fixed;
-			/* 新增：固定表格布局 */
 		}
 
 		.table th {
@@ -300,56 +293,51 @@
 			background: #f9f9f9;
 		}
 
-		/* 操作按钮容器 - 新增 */
+		/* 操作按钮容器 */
 		.action-buttons {
 			display: flex;
 			gap: 8px;
 			flex-wrap: nowrap;
-			/* 防止换行 */
 			justify-content: flex-start;
 		}
 
-		.btn-edit,
-		.btn-delete {
-			padding: 6px 12px;
-			border-radius: 4px;
-			cursor: pointer;
+		.btn {
+			padding: 10px 20px;
 			text-decoration: none;
-			display: inline-block;
-			font-size: 13px;
-			border: 1px solid transparent;
-			transition: all 0.2s ease;
-			white-space: nowrap;
-			/* 防止文本换行 */
-			min-width: 50px;
-			/* 设置最小宽度 */
-			text-align: center;
+			border-radius: 4px;
+			color: white;
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+			transition: all 0.3s;
+			font-weight: 500;
+			border: none;
+			cursor: pointer;
+			font-size: 14px;
 		}
 
 		.btn-edit {
-			background: #007bff;
-			color: white;
-			border-color: #0069d9;
-		}
-
-		.btn-delete {
-			background: #dc3545;
-			color: white;
-			border-color: #c82333;
+			background: linear-gradient(135deg, #007bff, #0056b3);
+			padding: 5px 9px;
+			font-size: 13px;
 		}
 
 		.btn-edit:hover {
-			background: #0056b3;
-			border-color: #0056b3;
+			background: linear-gradient(135deg, #0056b3, #004085);
 			transform: translateY(-1px);
-			box-shadow: 0 2px 4px rgba(0, 123, 255, 0.2);
+			box-shadow: 0 4px 8px rgba(0, 123, 255, 0.2);
+		}
+
+		.btn-delete {
+			background: linear-gradient(135deg, #dc3545, #c82333);
+			padding: 5px 9px;
+			font-size: 13px;
 		}
 
 		.btn-delete:hover {
-			background: #c82333;
-			border-color: #bd2130;
+			background: linear-gradient(135deg, #c82333, #bd2130);
 			transform: translateY(-1px);
-			box-shadow: 0 2px 4px rgba(220, 53, 69, 0.2);
+			box-shadow: 0 4px 8px rgba(220, 53, 69, 0.2);
 		}
 
 		/* 分页 */
@@ -450,6 +438,7 @@
 			margin-top: 15px;
 			border-top: 1px solid #eee;
 			padding-top: 15px;
+			flex-shrink: 0;
 		}
 
 		.legend-header {
@@ -540,7 +529,7 @@
 			max-height: 150px;
 			overflow-y: auto;
 			padding: 10px;
-			background: #f9f9f9;
+			background: #f7f7f7;
 			border-radius: 4px;
 			transition: max-height 0.3s ease;
 		}
@@ -557,7 +546,7 @@
 			gap: 8px;
 		}
 
-		/* 智能分组 - 当项目过多时自动换行并限制高度 */
+		/* 智能分组 */
 		.legend-grouped {
 			display: grid;
 			grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -624,7 +613,7 @@
 			margin-left: 8px;
 		}
 
-		/* 图例分页（当型号极多时） */
+		/* 图例分页 */
 		.legend-pagination {
 			display: flex;
 			justify-content: center;
@@ -679,18 +668,12 @@
 			background: #f0f0f0;
 		}
 
-		/* 针对图表的调整 - 当图例收起时给图表更多空间 */
+		/* 针对图表的调整 */
 		.chart-wrapper.with-smart-legend {
 			height: 350px;
-			/* 增加图表高度 */
 		}
 
 		/* 图表优化样式 */
-		.chart-wrapper {
-			position: relative;
-			height: 300px;
-		}
-
 		.chart-wrapper canvas {
 			max-height: 100%;
 			width: 100% !important;
@@ -698,63 +681,58 @@
 
 		/* 表格列宽优化 */
 		.table th:nth-child(1),
-		/* 序号 */
 		.table td:nth-child(1) {
 			width: 60px;
 		}
 
 		.table th:nth-child(2),
-		/* 产品代码 */
 		.table td:nth-child(2) {
 			width: 120px;
 		}
 
 		.table th:nth-child(3),
-		/* 生产工序 */
 		.table td:nth-child(3) {
 			width: 120px;
 		}
 
 		.table th:nth-child(4),
-		/* 下一工序 */
 		.table td:nth-child(4) {
 			width: 120px;
 		}
 
 		.table th:nth-child(5),
-		/* 生产数量 */
 		.table td:nth-child(5) {
 			width: 100px;
 			text-align: right;
 		}
 
 		.table th:nth-child(6),
-		/* 操作员 */
 		.table td:nth-child(6) {
 			width: 120px;
 		}
 
 		.table th:nth-child(7),
-		/* 备注 */
 		.table td:nth-child(7) {
 			width: 180px;
 		}
 
 		.table th:nth-child(8),
-		/* 创建者 */
 		.table td:nth-child(8) {
 			width: 100px;
 		}
 
 		.table th:nth-child(9),
-		/* 创建时间 */
 		.table td:nth-child(9) {
 			width: 150px;
 		}
 
 		.table th:nth-child(10),
-		/* 操作 */
 		.table td:nth-child(10) {
+			width: 100px;
+		}
+
+		.table th:nth-child(11),
+		.table td:nth-child(11) {
 			width: 130px;
 			text-align: center;
 		}
@@ -766,10 +744,72 @@
 			margin-bottom: 20px;
 		}
 
+		/* 新增：图表hover优化 */
+		.chart-wrapper {
+			position: relative;
+		}
+
+		.chart-wrapper canvas {
+			cursor: default;
+		}
+
+		.chart-wrapper canvas:hover {
+			cursor: crosshair;
+		}
+
+		/* 新增：确保两个图表盒子内部布局一致 */
+		.chart-box > div:last-child {
+			margin-top: auto;
+		}
+
+		/* 新增：右侧图表添加空占位容器，确保布局一致 */
+		.chart-box:not(:has(.smart-legend-container))::after {
+			content: '';
+			display: block;
+			height: 0;
+			flex-shrink: 0;
+			margin-top: 15px;
+		}
+
+		/* 修复flash消息动画 */
+		@keyframes slideOut {
+			from {
+				opacity: 1;
+				transform: translateY(0);
+			}
+			to {
+				opacity: 0;
+				transform: translateY(-20px);
+			}
+		}
+
+		.flash {
+			animation: slideIn 0.3s ease-in;
+		}
+
+		.flash.removing {
+			animation: slideOut 0.3s ease-out;
+		}
+
+		@keyframes slideIn {
+			from {
+				opacity: 0;
+				transform: translateY(-20px);
+			}
+			to {
+				opacity: 1;
+				transform: translateY(0);
+			}
+		}
+
 		/* 响应式调整 */
 		@media (max-width: 1200px) {
 			.chart-container {
 				grid-template-columns: 1fr;
+			}
+
+			.chart-box {
+				min-height: 450px;
 			}
 
 			.table th,
@@ -803,7 +843,7 @@
 
 			.date-display {
 				font-size: 12px;
-				order: -1; /* 移动端将日期放在最前面 */
+				order: -1;
 				width: 100%;
 				margin-bottom: 5px;
 			}
@@ -822,6 +862,20 @@
 
 			.chart-container {
 				grid-template-columns: 1fr;
+			}
+
+			.chart-box {
+				min-height: auto;
+				padding: 15px;
+			}
+
+			.chart-wrapper {
+				height: 300px;
+				min-height: 300px;
+			}
+
+			.chart-wrapper.with-smart-legend {
+				height: 300px;
 			}
 
 			.nav {
@@ -919,15 +973,6 @@
 			opacity: 0.5;
 		}
 
-		/* 可选：在图表容器中添加一个提示 */
-		.chart-wrapper::after {
-			display: block;
-			font-size: 12px;
-			color: #666;
-			margin-top: 10px;
-			text-align: right;
-		}
-
 		/* 编辑状态指示器 */
 		.edit-indicator {
 			display: inline-flex;
@@ -972,6 +1017,10 @@
 			{% if has_perm('manage_users') %}
 			<a href="{{ url_for('user_list') }}" class="nav-btn">用户管理</a>
 			{% endif %}
+
+			{% if has_perm('manage_system') %}
+            <a href="{{ url_for('system_management') }}" class="nav-btn">系统管理</a>
+            {% endif %}
 		</div>
 	</div>
 	<div class="container">
@@ -1039,7 +1088,6 @@
 						<div style="display: flex; gap: 10px;">
 							<button type="submit" class="btn-search">查询</button>
 							<a href="{{ url_for('index') }}" class="btn-clear">清除条件</a>
-							<a href="{{ url_for('add_record') }}" class="btn-add">+ 添加记录</a>
 						</div>
 					</div>
 				</div>
@@ -1127,7 +1175,7 @@
 			<div class="chart-box">
 				<div class="chart-title">
 					<div style="display: flex; justify-content: space-between; align-items: center;">
-						<span>操作员产量排名（按工序）</span>
+						<span>操作员产量排名</span>
 						<div class="filter-controls">
 							<select id="operatorProcessSelect" class="filter-select">
 								<option value="all">所有工序</option> {% for process in process_list %} <option
@@ -1166,12 +1214,16 @@
 						<td>{{ stat.top_product }} ({{ stat.top_product_qty }})</td>
 					</tr> {% endfor %} </tbody>
 			</table>
-		</div> {% endif %} <!-- 生产记录表格 -->
+		</div> {% endif %} 
+		<!-- 生产记录表格 -->
 		<div class="table-box">
 			<div class="table-header">
 				<div class="table-title">生产记录列表</div>
-				<div style="color: #666;">共 {{ records|length }} 条记录</div>
-			</div> {% if records %} <div class="table-scroll">
+				<div style="color: #666;">共 {{ records|length }} 条记录，其中 {{ frozen_count }} 条已冻结</div>
+			</div>
+			
+			{% if records %}
+			<div class="table-scroll">
 				<table class="table">
 					<thead>
 						<tr>
@@ -1184,37 +1236,71 @@
 							<th>备注</th>
 							<th>创建者</th>
 							<th>创建时间</th>
-							<!-- 移除"更新时间"列 -->
+							<th>状态</th>
 							<th>操作</th>
 						</tr>
 					</thead>
-					<tbody> {% for record in records %} <tr>
+					<tbody>
+						{% for record in records %}
+						<tr>
 							<td>{{ loop.index }}</td>
 							<td>{{ record.product_code }}</td>
 							<td>{{ record.process }}</td>
 							<td>{{ record.next_process or '-' }}</td>
 							<td>{{ record.number }}</td>
 							<td>{{ record.operators }}</td>
-							<td> {% if record.note %} <span title="{{ record.note }}"
-									style="cursor: help; color: #666;"> {{ record.note[:20] }}{% if record.note|length >
-									20 %}...{% endif %} </span> {% else %} - {% endif %} </td>
+							<td>
+								{% if record.note %}
+								<span title="{{ record.note }}" style="cursor: help; color: #666;">
+									{{ record.note[:20] }}{% if record.note|length > 20 %}...{% endif %}
+								</span>
+								{% else %} - {% endif %}
+							</td>
 							<td>{{ record.creator }}</td>
 							<td>{{ record.create_time.strftime('%Y-%m-%d %H:%M') }}</td>
-							<!-- 移除"更新时间"单元格 -->
+							<!-- 新增：冻结状态显示 -->
+							<td>
+								{% if record.is_freeze %}
+								<span style="color: #007bff; display: flex; align-items: center; gap: 5px;">
+									<span>❄️</span>
+									<span>冻结</span>
+								</span>
+								{% else %}
+								<span style="color: #dc3545; display: flex; align-items: center; gap: 5px;">
+									<span>未确认</span>
+								</span>
+								{% endif %}
+							</td>
 							<td>
 								<div class="action-buttons">
-									<a href="{{ url_for('edit_record', id=record.id) }}" class="btn-edit">编辑</a>
-									<a href="{{ url_for('delete_record', id=record.id) }}" class="btn-delete"
+									{% if not record.is_freeze or current_user.user_level >= 2 %}
+									<!-- 如果记录未冻结，或者用户是管理员(user_level>=2)，则显示编辑按钮 -->
+									<a href="{{ url_for('edit_record', id=record.id) }}" class="btn btn-edit">编辑</a>
+									{% else %}
+									<button class="btn btn-edit" disabled style="opacity: 0.5; cursor: not-allowed;" title="记录已冻结，无权限编辑">编辑</button>
+									{% endif %}
+									
+									{% if not record.is_freeze or current_user.user_level >= 2 %}
+									<!-- 如果记录未冻结，或者用户是管理员(user_level>=2)，则显示删除按钮 -->
+									<a href="{{ url_for('delete_record', id=record.id) }}" class="btn btn-delete"
 										onclick="return confirm('确定要删除这条记录吗？')">删除</a>
+									{% else %}
+									<button class="btn btn-delete" disabled style="opacity: 0.5; cursor: not-allowed;" title="记录已冻结，无权限删除">删除</button>
+									{% endif %}
 								</div>
 							</td>
-						</tr> {% endfor %} </tbody>
+						</tr>
+						{% endfor %}
+					</tbody>
 				</table>
-			</div> {% else %} <div class="empty-state">
+			</div>
+			{% else %}
+			<div class="empty-state">
 				<div class="empty-icon">📊</div>
 				<h3>暂无生产记录</h3>
 				<p>没有找到符合条件的生产记录，请尝试其他搜索条件或添加新记录</p>
-			</div> {% endif %}
+			</div>
+			{% endif %}
 		</div>
 		<script>
 			document.addEventListener('DOMContentLoaded', function () {
@@ -1234,8 +1320,8 @@
 				let currentPage = 1;
 				const itemsPerPage = 20;
 				let currentSearchTerm = '';
-				let hiddenItems = new Set(); // 存储隐藏的型号索引
-				let highlightedItem = null; // 当前高亮的型号
+				let hiddenItems = new Set();
+				let highlightedItem = null;
 
 				// 智能图例DOM元素
 				const legendToggle = document.getElementById('legendToggle');
@@ -1989,7 +2075,7 @@
 					return chartInstance;
 				}
 
-				// 加载操作员图表 - 优化图表
+				// 加载操作员图表 - 修复hover问题
 				function loadOperatorChart(period, process) {
 					// 清除之前的空状态
 					clearEmptyState(operatorChartContainer);
@@ -2006,6 +2092,10 @@
 						operatorCtx = document.getElementById('operatorChart');
 					}
 
+					// 确保右侧图表容器有固定高度
+					const chartWrapper = operatorCtx.parentElement;
+					chartWrapper.style.height = '350px';
+					
 					let url = `/api/today-stats?period=${period}&process=${process}`;
 					if (period === 'custom') {
 						url += `&start_date=${customStart}&end_date=${customEnd}`;
@@ -2027,6 +2117,10 @@
 								const topData = combined.slice(0, 15);
 								const sortedLabels = topData.map(item => item.label);
 								const sortedValues = topData.map(item => item.value);
+
+								// 根据数据量动态调整图表高度
+								const chartHeight = Math.max(350, Math.min(450, topData.length * 25));
+								chartWrapper.style.height = `${chartHeight}px`;
 
 								operatorChart = new Chart(operatorCtx, {
 									type: 'bar',
@@ -2065,16 +2159,42 @@
 											}),
 											borderWidth: 1,
 											borderRadius: 2,
-											hoverBorderWidth: 2
+											hoverBorderWidth: 2,
+											// 修复hover效果
+											hoverBackgroundColor: sortedValues.map((value, index) => {
+												const colors = [
+													'rgba(40, 167, 69, 1)',
+													'rgba(0, 123, 255, 1)',
+													'rgba(255, 193, 7, 1)',
+													'rgba(220, 53, 69, 1)',
+													'rgba(111, 66, 193, 1)',
+													'rgba(253, 126, 20, 1)',
+													'rgba(32, 201, 151, 1)',
+													'rgba(23, 162, 184, 1)',
+													'rgba(108, 117, 125, 1)'
+												];
+												return colors[index % colors.length];
+											})
 										}]
 									},
 									options: {
 										responsive: true,
-										maintainAspectRatio: false,
+										maintainAspectRatio: false, // 关键：改为false，由容器控制
 										indexAxis: 'y',
+										// 修复hover问题：改进交互设置
 										interaction: {
-											intersect: false,
-											mode: 'index'
+											mode: 'index',
+											intersect: true,
+											axis: 'y'
+										},
+										// 添加更精确的hover检测
+										onHover: (event, chartElements) => {
+											// 可以自定义hover样式
+											if (chartElements.length) {
+												event.native.target.style.cursor = 'pointer';
+											} else {
+												event.native.target.style.cursor = 'default';
+											}
 										},
 										scales: {
 											x: {
@@ -2102,7 +2222,7 @@
 											y: {
 												title: {
 													display: true,
-													text: process === 'all' ? '操作员（含工序）' : '操作员',
+													text: process === 'all' ? '操作员' : '操作员',
 													font: {
 														size: 14,
 														weight: 'bold'
@@ -2111,11 +2231,19 @@
 												ticks: {
 													font: {
 														size: 12
+													},
+													// 确保标签完整显示
+													callback: function(value, index, values) {
+														const label = this.getLabelForValue(value);
+														return label.length > 20 ? label.substring(0, 20) + '...' : label;
 													}
 												},
 												grid: {
 													display: false
-												}
+												},
+												// 确保条形之间有足够空间
+												barPercentage: 0.8,
+												categoryPercentage: 0.8
 											}
 										},
 										plugins: {
@@ -2135,20 +2263,69 @@
 												},
 												callbacks: {
 													title: function (tooltipItems) {
-														return tooltipItems[0].label;
+														// 显示完整标签
+														const label = tooltipItems[0].label;
+														return label.length > 30 ? label.substring(0, 30) + '...' : label;
 													},
 													label: function (context) {
 														return '产量: ' + context.parsed.x.toLocaleString() + ' 件';
 													}
-												}
+												},
+												// 确保tooltip正确显示在条形上方
+												position: 'nearest'
+											},
+											legend: {
+												display: false
 											}
+										},
+										// 增强hover动画
+										hover: {
+											mode: 'index',
+											intersect: true,
+											animationDuration: 200
 										},
 										animation: {
 											duration: 500,
-											easing: 'easeOutQuart'
+											easing: 'easeOutQuart',
+											onComplete: function() {
+												// 图表渲染完成后，确保容器高度正确
+												chartWrapper.style.height = 'auto';
+												chartWrapper.style.minHeight = '350px';
+											}
+										},
+										// 确保图表元素正确布局
+										layout: {
+											padding: {
+												top: 10,
+												right: 15,
+												bottom: 10,
+												left: 15
+											}
 										}
 									}
 								});
+
+								// 添加额外的事件监听器，确保hover正常工作
+								operatorCtx.addEventListener('mousemove', function(event) {
+									if (operatorChart) {
+										const elements = operatorChart.getElementsAtEventForMode(
+											event, 
+											'index', 
+											{ intersect: true }, 
+											false
+										);
+										
+										if (elements.length > 0) {
+											operatorCtx.style.cursor = 'pointer';
+										} else {
+											operatorCtx.style.cursor = 'default';
+										}
+									}
+								});
+
+								// 调整图表高度，确保与左侧图表对齐
+								adjustChartHeights();
+
 							} else {
 								showEmptyState(operatorChartContainer, '该时间段内暂无操作员生产数据');
 							}
@@ -2189,10 +2366,53 @@
 					}
 				}
 
+				// 调整图表高度，确保底部对齐
+				function adjustChartHeights() {
+					const chartBoxes = document.querySelectorAll('.chart-box');
+					if (chartBoxes.length === 2) {
+						const leftBox = chartBoxes[0];
+						const rightBox = chartBoxes[1];
+						
+						// 获取实际高度
+						const leftHeight = leftBox.offsetHeight;
+						const rightHeight = rightBox.offsetHeight;
+						
+						// 取最大高度
+						const maxHeight = Math.max(leftHeight, rightHeight);
+						
+						// 应用高度，确保两个图表容器高度一致
+						leftBox.style.height = maxHeight + 'px';
+						rightBox.style.height = maxHeight + 'px';
+						
+						// 调整内部图表容器高度
+						const leftChartWrapper = leftBox.querySelector('.chart-wrapper');
+						const rightChartWrapper = rightBox.querySelector('.chart-wrapper');
+						
+						if (leftChartWrapper && rightChartWrapper) {
+							// 减去标题和边距的高度
+							const availableHeight = maxHeight - 100;
+							leftChartWrapper.style.height = availableHeight + 'px';
+							rightChartWrapper.style.height = availableHeight + 'px';
+						}
+					}
+				}
+
 				// 初始化图表
 				function initCharts() {
+					// 确保两个图表容器高度一致
+					const chartBoxes = document.querySelectorAll('.chart-box');
+					chartBoxes.forEach(box => {
+						box.style.height = 'auto'; // 重置高度
+					});
+
+					// 加载图表
 					loadProcessChart('today', 'stacked');
 					loadOperatorChart('today', 'all');
+
+					// 延迟调整高度，确保图表渲染完成
+					setTimeout(() => {
+						adjustChartHeights();
+					}, 800);
 				}
 
 				// 初始化智能图例
@@ -2205,7 +2425,31 @@
 				setInterval(() => {
 					loadProcessChart(periodSelect.value, chartTypeSelect.value);
 					loadOperatorChart(periodSelect.value, operatorSelect.value);
+					
+					// 刷新后调整高度
+					setTimeout(adjustChartHeights, 800);
 				}, 5 * 60 * 1000);
+
+				// 窗口大小改变时重新调整高度
+				window.addEventListener('resize', function() {
+					setTimeout(adjustChartHeights, 300);
+				});
+			});
+
+			// 页面加载时自动处理已存在的flash消息
+			document.addEventListener('DOMContentLoaded', function() {
+				// 为所有flash消息添加自动关闭功能
+				const flashMessages = document.querySelectorAll('.flash');
+				flashMessages.forEach(flash => {
+					setTimeout(() => {
+						flash.style.animation = 'slideOut 0.3s ease-out';
+						setTimeout(() => {
+							if (flash.parentNode) {
+								flash.parentNode.removeChild(flash);
+							}
+						}, 300);
+					}, 3000);
+				});
 			});
 		</script>
 </body>

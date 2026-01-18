@@ -561,6 +561,10 @@
             <a href="{{ url_for('user_list') }}" class="nav-btn active">用户管理 <span
                     class="edit-indicator">添加用户</span></a>
             {% endif %}
+
+            {% if has_perm('manage_system') %}
+            <a href="{{ url_for('system_management') }}" class="nav-btn">系统管理</a>
+            {% endif %}
         </div>
     </div>
 
@@ -599,10 +603,10 @@
                 <!-- 显示具体权限 -->
                 <div style="margin-top: 5px; font-size: 12px;">
                     {% if current_user.can_add_record %}<span class="permission-badge">📝添加记录</span>{% endif %}
-                    {% if current_user.can_manage_users %}<span class="permission-badge">👥用户管理</span>{% endif %}
                     {% if current_user.can_manage_process %}<span class="permission-badge">🛠️工序管理</span>{% endif %}
-                    {% if current_user.can_manage_operator %}<span class="permission-badge">👷操作员管理</span>{% endif
-                    %}
+                    {% if current_user.can_manage_operator %}<span class="permission-badge">👷操作员管理</span>{% endif%}
+                    {% if current_user.can_manage_users %}<span class="permission-badge">👥用户管理</span>{% endif %}
+                    {% if current_user.can_manage_system %}<span class="permission-badge">⚙️系统管理</span>{% endif %}
                 </div>
             </div>
         </div>
@@ -653,23 +657,23 @@
                                 <span>✗</span> 密码不匹配
                             </div>
                         </div>
-                    </div>
 
-                    <!-- 用户级别选择 -->
-                    <div class="form-group">
-                        <label>用户级别</label>
-                        <select name="user_level" id="user_level" class="form-control" required>
-                            {% for level in grantable_levels %}
-                            <option value="{{ level.level }}" {% if level.level==0 %}selected{% endif %}
-                                class="level-option">
-                                {{ level.name }}
-                                {% if level.level == 3 %} - 拥有所有权限{% endif %}
-                                {% if level.level == 2 %} - 可创建子管理员{% endif %}
-                                {% if level.level == 1 %} - 有限管理权限{% endif %}
-                                {% if level.level == 0 %} - 基础权限{% endif %}
-                            </option>
-                            {% endfor %}
-                        </select>
+                        <!-- 用户级别选择（移到这一行） -->
+                        <div class="form-group">
+                            <label class="required">用户级别</label>
+                            <select name="user_level" id="user_level" class="form-control" required>
+                                {% for level in grantable_levels %}
+                                <option value="{{ level.level }}" {% if level.level==0 %}selected{% endif %}
+                                    class="level-option">
+                                    {{ level.name }}
+                                    {% if level.level == 3 %} - 拥有所有权限{% endif %}
+                                    {% if level.level == 2 %} - 可创建子管理员{% endif %}
+                                    {% if level.level == 1 %} - 有限管理权限{% endif %}
+                                    {% if level.level == 0 %} - 基础权限{% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
                     </div>
 
                     <!-- 具体权限设置（仅对非超级管理员显示） -->
@@ -687,17 +691,6 @@
                                     <span class="checkbox-custom"></span>
                                     <span>添加生产记录</span>
                                     <span style="font-size: 12px; color: #666;">（允许添加和编辑生产记录）</span>
-                                </label>
-                            </div>
-                            {% endif %}
-
-                            {% if 'manage_users' in grantable_permissions %}
-                            <div class="checkbox-group">
-                                <label class="checkbox-label">
-                                    <input type="checkbox" name="can_manage_users" id="can_manage_users">
-                                    <span class="checkbox-custom"></span>
-                                    <span>用户管理</span>
-                                    <span style="font-size: 12px; color: #666;">（允许管理用户账号）</span>
                                 </label>
                             </div>
                             {% endif %}
@@ -720,6 +713,28 @@
                                     <span class="checkbox-custom"></span>
                                     <span>操作员管理</span>
                                     <span style="font-size: 12px; color: #666;">（允许管理操作员）</span>
+                                </label>
+                            </div>
+                            {% endif %}
+
+                            {% if 'manage_users' in grantable_permissions %}
+                            <div class="checkbox-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="can_manage_users" id="can_manage_users">
+                                    <span class="checkbox-custom"></span>
+                                    <span>用户管理</span>
+                                    <span style="font-size: 12px; color: #666;">（允许管理用户账号）</span>
+                                </label>
+                            </div>
+                            {% endif %}
+
+                            {% if 'manage_system' in grantable_permissions %}
+                            <div class="checkbox-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="can_manage_system" id="can_manage_system">
+                                    <span class="checkbox-custom"></span>
+                                    <span>系统管理</span>
+                                    <span style="font-size: 12px; color: #666;">（允许管理系统设置和备份）</span>
                                 </label>
                             </div>
                             {% endif %}
@@ -980,6 +995,22 @@
                 this.style.borderColor = '#ddd';
                 this.style.boxShadow = 'none';
             }
+        });
+
+        // 页面加载时自动处理已存在的flash消息
+        document.addEventListener('DOMContentLoaded', function() {
+            // 为所有flash消息添加自动关闭功能
+            const flashMessages = document.querySelectorAll('.flash');
+            flashMessages.forEach(flash => {
+                setTimeout(() => {
+                    flash.style.animation = 'slideOut 0.3s ease-out';
+                    setTimeout(() => {
+                        if (flash.parentNode) {
+                            flash.parentNode.removeChild(flash);
+                        }
+                    }, 300);
+                }, 3000);
+            });
         });
     </script>
 </body>

@@ -141,21 +141,44 @@
 
         .form-group textarea {
             resize: vertical;
-            min-height: 80px;
+            height: 46px; /* 与 input 相同高度 */
+            min-height: 46px; /* 最小高度与 input 相同 */
+            max-height: 200px; /* 最大高度限制 */
+            overflow-y: auto; /* 内容超出时显示滚动条 */
+            line-height: 1.4; /* 与 input 的行高一致 */
+            padding: 12px 15px; /* 与 input 相同的内边距 */
+            transition: height 0.2s ease; /* 平滑过渡效果 */
+        }
+        
+        /* 当 textarea 获得焦点时，稍微增加高度以方便编辑 */
+        .form-group textarea:focus {
+            min-height: 80px; /* 获得焦点时增加最小高度 */
+            border-color: #2a5298;
+            box-shadow: 0 0 0 3px rgba(42, 82, 152, 0.1);
         }
 
         .form-group input:focus,
-        .form-group select:focus,
-        .form-group textarea:focus {
+        .form-group select:focus {
             border-color: #2a5298;
             box-shadow: 0 0 0 3px rgba(42, 82, 152, 0.1);
         }
 
         /* 适配多选下拉框的样式 */
         select[multiple] {
-            height: 120px;
-            padding: 8px;
-            resize: vertical;
+            height: 46px; /* 与 input 相同高度 */
+            min-height: 46px; /* 最小高度与 input 相同 */
+            max-height: 200px; /* 最大高度限制 */
+            overflow-y: auto; /* 内容超出时显示滚动条 */
+            padding: 12px 15px; /* 与 input 相同的内边距 */
+            resize: vertical; /* 允许垂直调整大小 */
+            transition: height 0.2s ease; /* 平滑过渡效果 */
+        }
+
+        /* 当多选下拉框获得焦点时，增加高度以便选择 */
+        select[multiple]:focus {
+            min-height: 120px; /* 获得焦点时增加最小高度 */
+            border-color: #2a5298;
+            box-shadow: 0 0 0 3px rgba(42, 82, 152, 0.1);
         }
 
         /* 下拉框美化 */
@@ -184,6 +207,21 @@
             color: #666;
             margin-top: 6px;
             font-style: italic;
+        }
+
+        /* 添加新的提示样式用于显示已选数量 */
+        .selection-count {
+            font-size: 12px;
+            color: #007bff;
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .selection-count::before {
+            content: "✓";
+            font-size: 10px;
         }
 
         /* 按钮区域 */
@@ -310,6 +348,15 @@
                 flex-direction: column;
                 gap: 20px !important;
             }
+            
+            /* 移动端调整多选下拉框高度 */
+            select[multiple] {
+                max-height: 150px;
+            }
+            
+            select[multiple]:focus {
+                min-height: 100px;
+            }
         }
 
         /* 选择框选项悬停效果 */
@@ -374,6 +421,11 @@
             border-radius: 4px;
             border-left: 3px solid #6c757d;
             transition: all 0.3s;
+            display: none; /* 默认隐藏 */
+        }
+        
+        .next-process-hint:not(:empty) {
+            display: inline-block; /* 有内容时显示 */
         }
         
         .next-process-hint.has-links {
@@ -415,6 +467,10 @@
 
             {% if has_perm('manage_users') %}
             <a href="{{ url_for('user_list') }}" class="nav-btn">用户管理</a>
+            {% endif %}
+
+            {% if has_perm('manage_system') %}
+            <a href="{{ url_for('system_management') }}" class="nav-btn">系统管理</a>
             {% endif %}
         </div>
     </div>
@@ -492,13 +548,15 @@
                             <div class="multiple-tip">
                                 提示：按住 Ctrl 键可多选操作员，按住 Shift 键可连续选择
                             </div>
+                            <div id="operator-count" class="selection-count">已选择 0 名操作员</div>
                         </div>
                     </div>
 
                     <!-- 备注字段 -->
                     <div class="form-group">
                         <label>备注（可选）</label>
-                        <textarea name="note" placeholder="请输入备注信息（可选）"></textarea>
+                        <textarea name="note" placeholder="请输入备注信息（可选）" rows="1"></textarea>
+                        <div class="multiple-tip">提示：可拖动右下角调整大小</div>
                     </div>
 
                     <div class="form-actions">
@@ -529,22 +587,38 @@
         const nextProcessSelect = document.getElementById('next-process-select');
         const nextProcessHint = document.getElementById('next-process-hint');
 
+        // 自动调整多选下拉框高度
+        function autoResizeSelect(select) {
+            // 重置高度以重新计算
+            select.style.height = '46px';
+            
+            // 计算滚动高度并设置新高度
+            const scrollHeight = select.scrollHeight;
+            const newHeight = Math.min(Math.max(scrollHeight, 46), 200);
+            select.style.height = newHeight + 'px';
+        }
+
+        // 更新已选操作员计数
+        function updateOperatorCount() {
+            const operatorSelect = document.getElementById('operator-select');
+            const selectedOperators = Array.from(operatorSelect.selectedOptions)
+                .filter(option => option.value && !option.disabled);
+            
+            const countElement = document.getElementById('operator-count');
+            if (countElement) {
+                countElement.textContent = `已选择 ${selectedOperators.length} 名操作员`;
+            }
+        }
+
         // 更新操作员下拉框的函数
         function updateOperatorSelect() {
             const selectedGroup = groupSelect.value;
             operatorSelect.innerHTML = '';
 
             if (selectedGroup) {
-                // 添加选中组的所有成员（支持多选）
                 const operators = operatorGroups[selectedGroup] || [];
 
                 if (operators.length > 0) {
-                    operators.forEach(operator => {
-                        const option = document.createElement('option');
-                        option.value = operator;  // 这里 operator 是对象
-                        option.textContent = operator;  // 这里也是对象
-                        operatorSelect.appendChild(option);
-                    });
                     operators.forEach(operatorName => {  // 现在 operatorName 是字符串
                         const option = document.createElement('option');
                         option.value = operatorName;
@@ -552,13 +626,22 @@
                         operatorSelect.appendChild(option);
                     });
 
-                    // 添加提示选项
+                    // 添加提示选项（只读）
                     const hintOption = document.createElement('option');
                     hintOption.disabled = true;
-                    hintOption.textContent = `已加载 ${operators.length} 名操作员`;
                     hintOption.style.fontStyle = 'italic';
                     hintOption.style.color = '#666';
+                    hintOption.style.backgroundColor = '#f8f9fa';
+                    hintOption.textContent = `共 ${operators.length} 名操作员`;
                     operatorSelect.appendChild(hintOption);
+                    
+                    // 更新已选计数
+                    updateOperatorCount();
+                    
+                    // 等待DOM更新后调整高度
+                    setTimeout(() => {
+                        autoResizeSelect(operatorSelect);
+                    }, 10);
                 } else {
                     const option = document.createElement('option');
                     option.value = '';
@@ -571,6 +654,47 @@
                 option.value = '';
                 option.textContent = '请先选择组别';
                 operatorSelect.appendChild(option);
+                
+                // 重置高度
+                setTimeout(() => {
+                    operatorSelect.style.height = '46px';
+                }, 10);
+            }
+        }
+
+        // 监听多选下拉框的变化来更新计数和高度
+        function setupOperatorSelectListeners() {
+            const operatorSelect = document.getElementById('operator-select');
+            
+            if (operatorSelect) {
+                // 监听选择变化
+                operatorSelect.addEventListener('change', function() {
+                    updateOperatorCount();
+                    
+                    // 短暂延迟后调整高度
+                    setTimeout(() => {
+                        autoResizeSelect(this);
+                    }, 10);
+                });
+                
+                // 获得焦点时增加高度
+                operatorSelect.addEventListener('focus', function() {
+                    // 保存当前高度
+                    const currentHeight = parseInt(getComputedStyle(this).height);
+                    if (currentHeight < 120) {
+                        this.style.minHeight = '120px';
+                        autoResizeSelect(this);
+                    }
+                });
+                
+                // 失去焦点时，恢复到初始高度46px
+                operatorSelect.addEventListener('blur', function() {
+                    // 短暂延迟后恢复到初始高度
+                    setTimeout(() => {
+                        this.style.minHeight = '46px';
+                        this.style.height = '46px';
+                    }, 200);
+                });
             }
         }
 
@@ -688,6 +812,32 @@
         // 监听组选择变化
         groupSelect.addEventListener('change', updateOperatorSelect);
 
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', function () {
+            const firstInput = document.querySelector('input[name="product_code"]');
+            if (firstInput) {
+                firstInput.focus();
+            }
+
+            // 如果已经选择了工序，触发一次change事件
+            if (processSelect.value) {
+                processSelect.dispatchEvent(new Event('change'));
+            }
+
+            // 新增：初始化操作员下拉框监听器
+            setupOperatorSelectListeners();
+            
+            // 页面加载后调整一次多选下拉框高度
+            const operatorSelect = document.getElementById('operator-select');
+            if (operatorSelect) {
+                // 短暂延迟后调整高度
+                setTimeout(() => {
+                    autoResizeSelect(operatorSelect);
+                    updateOperatorCount();
+                }, 100);
+            }
+        });
+
         // 表单提交前的验证
         document.querySelector('form').addEventListener('submit', function (e) {
             const operatorSelect = document.getElementById('operator-select');
@@ -729,19 +879,6 @@
             }
         });
 
-        // 页面加载时聚焦到第一个输入框
-        document.addEventListener('DOMContentLoaded', function () {
-            const firstInput = document.querySelector('input[name="product_code"]');
-            if (firstInput) {
-                firstInput.focus();
-            }
-
-            // 如果已经选择了工序，触发一次change事件
-            if (processSelect.value) {
-                processSelect.dispatchEvent(new Event('change'));
-            }
-        });
-
         // 检查是否有成功消息，如果有则清空表单
         document.addEventListener('DOMContentLoaded', function () {
             const successMessages = document.querySelectorAll('.flash.success');
@@ -769,9 +906,68 @@
                 // 清空提示
                 nextProcessHint.textContent = '';
                 nextProcessHint.className = 'next-process-hint';
+                
+                // 清空已选计数
+                const countElement = document.getElementById('operator-count');
+                if (countElement) {
+                    countElement.textContent = '已选择 0 名操作员';
+                }
 
                 // 聚焦到产品代码输入框
                 document.querySelector('input[name="product_code"]').focus();
+            }
+        });
+
+        // 页面加载时自动处理已存在的flash消息
+        document.addEventListener('DOMContentLoaded', function() {
+            // 为所有flash消息添加自动关闭功能
+            const flashMessages = document.querySelectorAll('.flash');
+            flashMessages.forEach(flash => {
+                setTimeout(() => {
+                    flash.style.animation = 'slideOut 0.3s ease-out';
+                    setTimeout(() => {
+                        if (flash.parentNode) {
+                            flash.parentNode.removeChild(flash);
+                        }
+                    }, 300);
+                }, 3000);
+            });
+        });
+        
+        // 自动调整 textarea 高度
+        function autoResizeTextarea(textarea) {
+            // 重置高度以重新计算
+            textarea.style.height = '46px';
+            // 计算滚动高度并设置新高度
+            const newHeight = Math.min(Math.max(textarea.scrollHeight, 46), 200);
+            textarea.style.height = newHeight + 'px';
+        }
+        
+        // 页面加载完成后初始化 textarea 高度
+        document.addEventListener('DOMContentLoaded', function() {
+            const noteTextarea = document.querySelector('textarea[name="note"]');
+            if (noteTextarea) {
+                // 初始设置高度
+                autoResizeTextarea(noteTextarea);
+                
+                // 输入时自动调整
+                noteTextarea.addEventListener('input', function() {
+                    autoResizeTextarea(this);
+                });
+                
+                // 焦点变化时调整
+                noteTextarea.addEventListener('focus', function() {
+                    autoResizeTextarea(this);
+                });
+                
+                noteTextarea.addEventListener('blur', function() {
+                    // 如果内容为空，恢复到初始高度
+                    if (!this.value.trim()) {
+                        this.style.height = '46px';
+                    } else {
+                        autoResizeTextarea(this);
+                    }
+                });
             }
         });
     </script>

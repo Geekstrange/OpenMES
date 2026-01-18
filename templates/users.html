@@ -209,6 +209,34 @@
         .table tr:last-child td {
             border-bottom: none;
         }
+        
+        /* 表格行悬停效果 - 与operator_list.html保持一致 */
+        .table tr:hover {
+            background-color: #f8f9fa;
+            transform: translateY(-1px);
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+        
+        /* 表格边框和分隔线优化 - 与operator_list.html保持一致 */
+        .table {
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        
+        .table th {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-bottom: 2px solid #dee2e6;
+        }
+        
+        .table td {
+            border-bottom: 1px solid #f1f3f5;
+        }
+        
+        .table tr:last-child td {
+            border-bottom: none;
+        }
 
         /* 用户角色徽章 */
         .superuser-badge {
@@ -260,12 +288,6 @@
             font-size: 11px;
             margin-right: 4px;
             border: 1px solid #b3d7ff;
-        }
-
-        /* 操作列 */
-        .actions {
-            display: flex;
-            gap: 8px;
         }
 
         /* 消息提示样式 */
@@ -377,10 +399,6 @@
                 grid-template-columns: 1fr;
             }
 
-            .actions {
-                flex-wrap: wrap;
-            }
-
             .btn {
                 padding: 8px 15px;
             }
@@ -456,6 +474,14 @@
             opacity: 0.8;
             background: rgba(255, 255, 255, 0.1);
         }
+        
+        /* 操作按钮容器 - 新增，与index.html保持一致 */
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: nowrap;
+            justify-content: flex-start;
+        }
     </style>
 </head>
 
@@ -492,6 +518,10 @@
 
             {% if has_perm('manage_users') %}
             <a href="{{ url_for('user_list') }}" class="nav-btn active">用户管理</a>
+            {% endif %}
+
+            {% if has_perm('manage_system') %}
+            <a href="{{ url_for('system_management') }}" class="nav-btn">系统管理</a>
             {% endif %}
         </div>
     </div>
@@ -537,10 +567,10 @@
                     <!-- 显示具体权限 -->
                     <div style="margin-top: 5px; font-size: 12px;">
                         {% if current_user.can_add_record %}<span class="permission-badge">📝添加记录</span>{% endif %}
-                        {% if current_user.can_manage_users %}<span class="permission-badge">👥用户管理</span>{% endif %}
                         {% if current_user.can_manage_process %}<span class="permission-badge">🛠️工序管理</span>{% endif %}
-                        {% if current_user.can_manage_operator %}<span class="permission-badge">👷操作员管理</span>{% endif
-                        %}
+                        {% if current_user.can_manage_operator %}<span class="permission-badge">👷操作员管理</span>{% endif%}
+                        {% if current_user.can_manage_users %}<span class="permission-badge">👥用户管理</span>{% endif %}
+                        {% if current_user.can_manage_system %}<span class="permission-badge">⚙️系统管理</span>{% endif %}
                     </div>
                 </span>
             </div>
@@ -617,29 +647,28 @@
                             </td>
                             <td>
                                 {% if user.can_add_record %}<span class="permission-badge">📝</span>{% endif %}
-                                {% if user.can_manage_users %}<span class="permission-badge">👥</span>{% endif %}
                                 {% if user.can_manage_process %}<span class="permission-badge">🛠️</span>{% endif %}
                                 {% if user.can_manage_operator %}<span class="permission-badge">👷</span>{% endif %}
+                                {% if user.can_manage_users %}<span class="permission-badge">👥</span>{% endif %}
+                                {% if user.can_manage_system %}<span class="permission-badge">⚙️</span>{% endif %}
                             </td>
                             <td>{{ user.create_time.strftime('%Y-%m-%d %H:%M') }}</td>
                             <td>{{ user.update_time.strftime('%Y-%m-%d %H:%M') }}</td>
                             <td>
-                                <div class="actions">
-                                    {% if current_user.can_edit_user(user) or (current_user.user_level == 0 and
-                                    current_user.id == user.id) %}
+                                <div class="action-buttons">
+                                    <!-- 完全按照index.html中冻结记录的按钮处理方式 -->
+                                    {% if current_user.can_edit_user(user) or (current_user.user_level == 0 and current_user.id == user.id) %}
                                     <a href="{{ url_for('edit_user', id=user.id) }}" class="btn btn-edit">编辑</a>
-                                    {% if user.id != current_user.id and user.user_level != 3 %}
-                                    <a href="{{ url_for('delete_user', id=user.id) }}" class="btn btn-delete"
-                                        onclick="return confirmDeleteUser('{{ user.username }}')">删除</a>
                                     {% else %}
-                                    <button class="btn btn-delete" style="opacity: 0.5; cursor: not-allowed;"
-                                        title="{% if user.user_level == 3 %}不能删除超级管理员{% else %}不能删除自己{% endif %}">删除</button>
+                                    <button class="btn btn-edit" disabled style="opacity: 0.5; cursor: not-allowed;" title="无权限编辑该用户">编辑</button>
                                     {% endif %}
+                                    
+                                    {% if user.id != current_user.id and user.user_level != 3 and current_user.can_edit_user(user) %}
+                                    <a href="{{ url_for('delete_user', id=user.id) }}" class="btn btn-delete"
+                                        onclick="return confirm('确定要删除用户"{{ user.username }}"吗？')">删除</a>
                                     {% else %}
-                                    <button class="btn btn-edit" style="opacity: 0.5; cursor: not-allowed;"
-                                        title="无权限编辑该用户">编辑</button>
-                                    <button class="btn btn-delete" style="opacity: 0.5; cursor: not-allowed;"
-                                        title="无权限删除该用户">删除</button>
+                                    <button class="btn btn-delete" disabled style="opacity: 0.5; cursor: not-allowed;" 
+                                            title="{% if user.id == current_user.id %}不能删除自己{% elif user.user_level == 3 %}不能删除超级管理员{% else %}无权限删除该用户{% endif %}">删除</button>
                                     {% endif %}
                                 </div>
                             </td>
@@ -686,21 +715,56 @@
             }
 
             document.addEventListener('DOMContentLoaded', function () {
-                // 为删除按钮添加二次确认
-                const deleteButtons = document.querySelectorAll('.btn-delete:not([disabled])');
-                deleteButtons.forEach(button => {
-                    if (button.onclick) return; // 如果已有onclick事件，跳过
-
+                // 防止已禁用的按钮被点击
+                const disabledButtons = document.querySelectorAll('button.btn:disabled');
+                disabledButtons.forEach(button => {
                     button.addEventListener('click', function (e) {
-                        const row = this.closest('tr');
-                        const username = row.querySelector('td:nth-child(2)').textContent.trim().replace('当前用户', '').trim();
-
-                        if (!confirm(`确定要永久删除用户 "${username}" 吗？\n\n此操作将无法撤销，且该用户的所有数据都将被移除。`)) {
-                            e.preventDefault();
-                        }
+                        e.preventDefault();
+                        e.stopPropagation();
+                        return false;
                     });
                 });
+                
+                // 为所有flash消息添加自动关闭功能
+                const flashMessages = document.querySelectorAll('.flash');
+                flashMessages.forEach(flash => {
+                    setTimeout(() => {
+                        flash.style.animation = 'slideOut 0.3s ease-out';
+                        setTimeout(() => {
+                            if (flash.parentNode) {
+                                flash.parentNode.removeChild(flash);
+                            }
+                        }, 300);
+                    }, 3000);
+                });
             });
+
+            // 添加CSS动画
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes slideIn {
+                    from {
+                        opacity: 0;
+                        transform: translateY(-10px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+                
+                @keyframes slideOut {
+                    from {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                    to {
+                        opacity: 0;
+                        transform: translateY(-10px);
+                    }
+                }
+            `;
+            document.head.appendChild(style);
         </script>
 </body>
 

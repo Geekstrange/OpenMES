@@ -8,6 +8,13 @@ import json
 import os
 import base64
 from werkzeug.utils import secure_filename
+import subprocess
+import psycopg2
+import shutil
+from pathlib import Path
+import gzip
+import zipfile
+from datetime import datetime
 
 # -------------------------- PostgreSQL配置 --------------------------
 DB_USER = 'postgres'
@@ -18,8 +25,11 @@ DB_NAME = 'openpms_db'
 
 # -------------------------- 文件存储配置 --------------------------
 SIGNATURE_STORAGE_PATH = 'static/signatures/'
+BACKUP_STORAGE_PATH = 'backups/'
 if not os.path.exists(SIGNATURE_STORAGE_PATH):
     os.makedirs(SIGNATURE_STORAGE_PATH, exist_ok=True)
+if not os.path.exists(BACKUP_STORAGE_PATH):
+    os.makedirs(BACKUP_STORAGE_PATH, exist_ok=True)
 
 # 初始化Flask应用
 app = Flask(__name__)
@@ -87,9 +97,10 @@ class User(UserMixin, db.Model):
     
     # 具体权限字段
     can_add_record = db.Column(db.Boolean, default=False)      # 添加记录
-    can_manage_users = db.Column(db.Boolean, default=False)    # 用户管理
     can_manage_process = db.Column(db.Boolean, default=False)  # 工序管理
     can_manage_operator = db.Column(db.Boolean, default=False) # 操作员管理
+    can_manage_users = db.Column(db.Boolean, default=False)    # 用户管理
+    can_manage_system = db.Column(db.Boolean, default=False)   # 系统管理
     
     # 权限追踪
     granted_by = db.Column(db.Integer, db.ForeignKey('production_users.id'), nullable=True)
@@ -159,16 +170,18 @@ class User(UserMixin, db.Model):
         if self.user_level == 3:
             perms = {
                 'add_record': True,
-                'manage_users': True,
                 'manage_process': True,
-                'manage_operator': True
+                'manage_operator': True,
+                'manage_users': True,
+                'manage_system': True,
             }
         else:
             perms = {
                 'add_record': self.can_add_record,
-                'manage_users': self.can_manage_users,
                 'manage_process': self.can_manage_process,
-                'manage_operator': self.can_manage_operator
+                'manage_operator': self.can_manage_operator,
+                'manage_users': self.can_manage_users,
+                'manage_system': self.can_manage_system,
             }
         
         return perms
@@ -258,6 +271,9 @@ class ProductionRecord(db.Model):
     creator = db.Column(db.String(50), nullable=False)
     create_time = db.Column(db.DateTime, default=datetime.now)
     update_time = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
+    
+    # 新增：冻结状态（当组管理员签字确认后冻结）
+    is_freeze = db.Column(db.Boolean, default=False, nullable=False)
 
 class ProcessOption(db.Model):
     __tablename__ = 'process_options'
@@ -351,14 +367,16 @@ def inject_permissions():
     
     def get_current_operator():
         if session.get('operator_logged_in'):
-            operator = OperatorGroup.query.get(session.get('operator_id'))
-            if operator:
-                return {
-                    'name': operator.operator_name,
-                    'group': operator.group_name,
-                    'id': operator.id,
-                    'is_group_owner': operator.group_owner if operator else False
-                }
+            operator_id = session.get('operator_id')  # 先获取变量
+            if operator_id:
+                operator = db.session.get(OperatorGroup, int(operator_id))  # 使用变量
+                if operator:
+                    return {
+                        'name': operator.operator_name,
+                        'group': operator.group_name,
+                        'id': operator.id,
+                        'is_group_owner': operator.group_owner if operator else False
+                    }
             return {
                 'name': session.get('operator_name'),
                 'group': session.get('operator_group'),
@@ -370,17 +388,19 @@ def inject_permissions():
     # 为操作员提供导航
     def get_operator_nav():
         if session.get('operator_logged_in'):
-            operator = OperatorGroup.query.get(session.get('operator_id'))
-            nav = [
-                {'name': '今日生产', 'url': url_for('operator_dashboard'), 'icon': '📊'},
-                {'name': '修改密码', 'url': '#', 'icon': '🔒', 'onclick': 'showChangePasswordModal()'}
-            ]
-            if operator and operator.group_owner:
-                nav.extend([
-                    {'name': '组内记录', 'url': '#', 'icon': '👥', 'onclick': 'showGroupRecordsModal()'},
-                    {'name': '确认签字', 'url': '#', 'icon': '✍️', 'onclick': 'showSignatureModal()'}
-                ])
-            return nav
+            operator_id = session.get('operator_id')  # 先获取变量
+            if operator_id:
+                operator = db.session.get(OperatorGroup, int(operator_id))  # 使用变量
+                nav = [
+                    {'name': '今日生产', 'url': url_for('operator_dashboard'), 'icon': '📊'},
+                    {'name': '修改密码', 'url': '#', 'icon': '🔒', 'onclick': 'showChangePasswordModal()'}
+                ]
+                if operator and operator.group_owner:
+                    nav.extend([
+                        {'name': '组内记录', 'url': '#', 'icon': '👥', 'onclick': 'showGroupRecordsModal()'},
+                        {'name': '确认签字', 'url': '#', 'icon': '✒️', 'onclick': 'showSignatureModal()'}
+                    ])
+                return nav
         return []
     
     return {
@@ -514,19 +534,24 @@ def group_owner_required(f):
         if not session.get('operator_logged_in'):
             flash('请先登录！', 'danger')
             return redirect(url_for('login'))
-        
-        operator = OperatorGroup.query.get(session.get('operator_id'))
-        if not operator or not operator.group_owner:
-            flash('需要组管理员权限才能访问！', 'danger')
-            return redirect(url_for('operator_dashboard'))
-        
-        return f(*args, **kwargs)
+
+        operator_id = session.get('operator_id')  # 先获取变量
+        if operator_id:
+            operator = db.session.get(OperatorGroup, int(operator_id))  # 使用变量
+            if not operator or not operator.group_owner:
+                flash('需要组管理员权限才能访问！', 'danger')
+                return redirect(url_for('operator_dashboard'))
+            
+            return f(*args, **kwargs)
+        else:
+            flash('请先登录！', 'danger')
+            return redirect(url_for('login'))
     return decorated_function
 
 # -------------------------- 登录/登出 --------------------------
 @login_manager.user_loader
 def load_user(user_id):
-    user = User.query.get(int(user_id))
+    user = db.session.get(User, int(user_id))
     if user:
         # 如果是系统用户登录，清空可能的操作员session
         if session.get('operator_logged_in'):
@@ -595,7 +620,7 @@ def logout():
     
     return redirect(url_for('login'))
 
-# -------------------------- 核心功能 --------------------------
+# -------------------------- 首页路由 --------------------------
 @app.route('/')
 @login_required
 def index():
@@ -715,6 +740,11 @@ def index():
             key = f"{op} ({record.process})"
             operator_chart_data[key] = operator_chart_data.get(key, 0) + record.number
 
+    # 计算冻结记录数量
+    frozen_count = db.session.query(ProductionRecord).filter(
+        ProductionRecord.is_freeze == True
+    ).count()
+
     return render_template('index.html',
                            records=records,
                            search_code=search_code,
@@ -735,8 +765,10 @@ def index():
                            process_values=list(process_chart_data.values()),
                            operator_labels=list(operator_chart_data.keys()),
                            operator_values=list(operator_chart_data.values()),
-                           today=today)
+                           today=today,
+                           frozen_count=frozen_count)
 
+# -------------------------- 添加记录 --------------------------
 @app.route('/add', methods=['GET', 'POST'])
 @login_required
 def add_record():
@@ -787,7 +819,8 @@ def add_record():
             number=int(number),
             operators=operator_str,
             note=note if note else None,
-            creator=current_user.username
+            creator=current_user.username,
+            is_freeze=False  # 新增记录默认未冻结
         )
         db.session.add(new_record)
         try:
@@ -829,10 +862,16 @@ def add_record():
                          process_links=process_links,
                          process_next_links=process_next_links)
 
+# -------------------------- 编辑记录 --------------------------
 @app.route('/edit/<int:id>', methods=['GET', 'POST'])
 @login_required
 def edit_record(id):
-    record = ProductionRecord.query.get_or_404(id)
+    record = db.session.get(ProductionRecord, int(id))
+    
+    # 检查记录是否已冻结且用户权限不足
+    if record.is_freeze and current_user.user_level < 2:
+        flash('该记录已被确认，您无权限编辑！', 'danger')
+        return redirect(url_for('index'))
 
     # 检查添加记录的权限
     if not current_user.has_permission('add_record'):
@@ -986,7 +1025,12 @@ def process_model_stats():
 @app.route('/delete/<int:id>')
 @login_required
 def delete_record(id):
-    record = ProductionRecord.query.get_or_404(id)
+    record = db.session.get(ProductionRecord, int(id))
+    
+    # 检查记录是否已冻结且用户权限不足
+    if record.is_freeze and current_user.user_level < 2:
+        flash('该记录已被确认冻结，您无权限删除！', 'danger')
+        return redirect(url_for('index'))
 
     # 检查添加记录的权限
     if not current_user.has_permission('add_record'):
@@ -1047,7 +1091,7 @@ def today_stats():
     for record in records:
         process_stats[record.process] = process_stats.get(record.process, 0) + record.number
 
-    # 操作员统计（按工序）
+    # 操作员统计（按工序筛选）
     operator_stats = {}
     operator_names = set()
     for record in records:
@@ -1119,7 +1163,7 @@ def add_process():
 @permission_required('manage_process')
 def delete_process(id):
     """删除工序"""
-    process = ProcessOption.query.get_or_404(id)
+    process = db.session.get(ProcessOption, int(id))
     
     # 超级管理员不受限制，可以删除被使用的工序
     if not current_user.is_superuser:
@@ -1146,7 +1190,7 @@ def delete_process(id):
 @permission_required('manage_process')
 def get_linked_groups(id):
     """获取工序已关联的操作员组"""
-    process = ProcessOption.query.get_or_404(id)
+    process = db.session.get(ProcessOption, int(id))
     
     # 获取已关联的组
     linked_groups = get_process_groups(process.process_name)
@@ -1165,7 +1209,7 @@ def get_linked_groups(id):
 @permission_required('manage_process')
 def link_process_groups(id):
     """为工序关联操作员组"""
-    process = ProcessOption.query.get_or_404(id)
+    process = db.session.get(ProcessOption, int(id))
     
     # 获取前端传递的组列表
     selected_groups = request.form.getlist('groups')
@@ -1189,7 +1233,7 @@ def link_process_groups(id):
 @permission_required('manage_process')
 def get_linked_next_processes(id):
     """获取工序已关联的下工序"""
-    process = ProcessOption.query.get_or_404(id)
+    process = db.session.get(ProcessOption, int(id))
     
     # 获取已关联的下工序
     if process.linked_next_processes:
@@ -1215,7 +1259,7 @@ def get_linked_next_processes(id):
 @permission_required('manage_process')
 def link_process_next(id):
     """为工序关联下工序"""
-    process = ProcessOption.query.get_or_404(id)
+    process = db.session.get(ProcessOption, int(id))
     
     # 获取前端传递的下工序列表
     selected_next_processes = request.form.getlist('next_processes')
@@ -1288,20 +1332,20 @@ def add_user():
     
     if current_user.user_level == 3:
         # 超级管理员可以授予所有权限
-        grantable_permissions = ['add_record', 'manage_users', 'manage_process', 'manage_operator']
+        grantable_permissions = ['add_record', 'manage_process', 'manage_operator', 'manage_users', 'manage_system']
     elif current_user.user_level == 2:
         # 管理员可以授予自己拥有的权限
-        for perm in ['add_record', 'manage_users', 'manage_process', 'manage_operator']:
+        for perm in ['add_record', 'manage_process', 'manage_operator', 'manage_users', 'manage_system']:
             if current_user.has_permission(perm):
                 grantable_permissions.append(perm)
     elif current_user.user_level == 1:
         # 子管理员可以授予自己拥有的权限给普通用户
-        for perm in ['add_record', 'manage_users', 'manage_process', 'manage_operator']:
+        for perm in ['add_record', 'manage_process', 'manage_operator', 'manage_users', 'manage_system']:
             if current_user.has_permission(perm):
                 grantable_permissions.append(perm)
     elif current_user.user_level == 0:
         # 普通用户只能授予自己拥有的权限
-        for perm in ['add_record', 'manage_users', 'manage_process', 'manage_operator']:
+        for perm in ['add_record', 'manage_process', 'manage_operator', 'manage_users', 'manage_system']:
             if current_user.has_permission(perm):
                 grantable_permissions.append(perm)
     
@@ -1325,11 +1369,13 @@ def add_user():
             can_manage_users = True
             can_manage_process = True
             can_manage_operator = True
+            can_manage_system = True
         else:
             can_add_record = request.form.get('can_add_record') == 'on' and 'add_record' in grantable_permissions
             can_manage_users = request.form.get('can_manage_users') == 'on' and 'manage_users' in grantable_permissions
             can_manage_process = request.form.get('can_manage_process') == 'on' and 'manage_process' in grantable_permissions
             can_manage_operator = request.form.get('can_manage_operator') == 'on' and 'manage_operator' in grantable_permissions
+            can_manage_system = request.form.get('can_manage_system') == 'on' and 'manage_system' in grantable_permissions
         
         # 验证数据
         if not username or not password:
@@ -1350,9 +1396,10 @@ def add_user():
             username=username,
             user_level=user_level,
             can_add_record=can_add_record,
-            can_manage_users=can_manage_users,
             can_manage_process=can_manage_process,
             can_manage_operator=can_manage_operator,
+            can_manage_users=can_manage_users,
+            can_manage_system=can_manage_system,
             granted_by=current_user.id  # 记录权限授予者
         )
         new_user.set_password(password)
@@ -1376,7 +1423,7 @@ def add_user():
 def edit_user(id):
     """编辑用户 - 根据当前用户权限限制可修改的内容"""
     
-    user = User.query.get_or_404(id)
+    user = db.session.get(User, int(id))
     
     # 权限检查：高权限可以编辑低权限，同级不能相互编辑，但可以编辑自己
     # 特别修改：普通用户可以编辑自己
@@ -1391,17 +1438,17 @@ def edit_user(id):
     grantable_permissions = []
     
     if current_user.user_level == 3:
-        grantable_permissions = ['add_record', 'manage_users', 'manage_process', 'manage_operator']
+        grantable_permissions = ['add_record', 'manage_process', 'manage_operator', 'manage_users', 'manage_system']
     elif current_user.user_level == 2:
-        for perm in ['add_record', 'manage_users', 'manage_process', 'manage_operator']:
+        for perm in ['add_record', 'manage_process', 'manage_operator', 'manage_users', 'manage_system']:
             if current_user.has_permission(perm):
                 grantable_permissions.append(perm)
     elif current_user.user_level == 1:
-        for perm in ['add_record', 'manage_users', 'manage_process', 'manage_operator']:
+        for perm in ['add_record', 'manage_process', 'manage_operator', 'manage_users', 'manage_system']:
             if current_user.has_permission(perm):
                 grantable_permissions.append(perm)
     elif current_user.user_level == 0:
-        for perm in ['add_record', 'manage_users', 'manage_process', 'manage_operator']:
+        for perm in ['add_record', 'manage_process', 'manage_operator', 'manage_users', 'manage_system']:
             if current_user.has_permission(perm):
                 grantable_permissions.append(perm)
     
@@ -1433,21 +1480,24 @@ def edit_user(id):
         # 获取具体权限
         if user_level == 3:  # 超级管理员
             can_add_record = True
-            can_manage_users = True
             can_manage_process = True
             can_manage_operator = True
+            can_manage_users = True
+            can_manage_system = True
         else:
             # 普通用户编辑自己时，不允许修改权限
             if current_user.user_level == 0 and current_user.id == user.id:
                 can_add_record = user.can_add_record
-                can_manage_users = user.can_manage_users
                 can_manage_process = user.can_manage_process
                 can_manage_operator = user.can_manage_operator
+                can_manage_users = user.can_manage_users
+                can_manage_system = user.can_manage_system
             else:
                 can_add_record = request.form.get('can_add_record') == 'on' and 'add_record' in grantable_permissions
-                can_manage_users = request.form.get('can_manage_users') == 'on' and 'manage_users' in grantable_permissions
                 can_manage_process = request.form.get('can_manage_process') == 'on' and 'manage_process' in grantable_permissions
                 can_manage_operator = request.form.get('can_manage_operator') == 'on' and 'manage_operator' in grantable_permissions
+                can_manage_users = request.form.get('can_manage_users') == 'on' and 'manage_users' in grantable_permissions
+            can_manage_system = request.form.get('can_manage_system') == 'on' and 'manage_system' in grantable_permissions
         
         # 验证数据
         if not username:
@@ -1475,9 +1525,10 @@ def edit_user(id):
         # 普通用户编辑自己时，不能修改权限
         if not (current_user.user_level == 0 and current_user.id == user.id):
             user.can_add_record = can_add_record
-            user.can_manage_users = can_manage_users
             user.can_manage_process = can_manage_process
             user.can_manage_operator = can_manage_operator
+            user.can_manage_users = can_manage_users
+            user.can_manage_system = can_manage_system
         
         # 只有密码不为空时才更新
         if password:
@@ -1512,7 +1563,7 @@ def delete_user(id):
         flash('不能删除当前登录的用户！', 'danger')
         return redirect(url_for('user_list'))
     
-    user = User.query.get_or_404(id)
+    user = db.session.get(User, int(id))
     
     # 权限检查：高权限可以删除低权限，同级不能相互删除
     if not current_user.can_edit_user(user):
@@ -1547,9 +1598,13 @@ def operator_list():
         OperatorGroup.operator_name
     ).all()
 
+    # 获取当前日期，用于签字状态判断
+    today = date.today()
+
     return render_template('operator_list.html',
                          groups=groups,
-                         operators=operators)
+                         operators=operators,
+                         today=today)  # 添加 today 变量
 
 @app.route('/operator/add', methods=['GET', 'POST'])
 @login_required
@@ -1645,7 +1700,7 @@ def add_operator():
 @permission_required('manage_operator')
 def delete_operator(id):
     """删除操作员"""
-    operator = OperatorGroup.query.get_or_404(id)
+    operator = db.session.get(OperatorGroup, int(id))
 
     # 超级管理员不受限制，可以删除被使用的操作员
     if not current_user.is_superuser:
@@ -1701,13 +1756,245 @@ def delete_operator_group(group_name):
 
     return redirect(url_for('operator_list'))
 
+# --------------------------- 系统管理 ---------------------------
+@app.route('/system')
+@login_required
+@permission_required('manage_system')
+def system_management():
+    return render_template('system.html')
+
+# -------------------------- 数据库备份功能 --------------------------
+@app.route('/system/backup', methods=['POST'])
+@login_required
+@permission_required('manage_system')
+def backup_database():
+    """创建数据库备份"""
+    try:
+        # 只有超级管理员可以备份
+        if not current_user.is_superuser:
+            return jsonify({'success': False, 'message': '需要超级管理员权限'})
+        
+        data = request.get_json()
+        include_timestamp = data.get('include_timestamp', True)
+        compress = data.get('compress', True)
+        
+        # 生成备份文件名
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        db_name = DB_NAME
+        
+        if include_timestamp:
+            filename = f"{db_name}_backup_{timestamp}.sql"
+        else:
+            filename = f"{db_name}_backup.sql"
+        
+        filepath = os.path.join(BACKUP_STORAGE_PATH, filename)
+        
+        # 使用 pg_dump 备份数据库
+        # 注意：需要确保服务器已安装 PostgreSQL 客户端工具
+        cmd = [
+            'pg_dump',
+            '-h', DB_HOST,
+            '-p', DB_PORT,
+            '-U', DB_USER,
+            '-d', DB_NAME,
+            '-f', filepath
+        ]
+        
+        # 设置环境变量包含密码
+        env = os.environ.copy()
+        env['PGPASSWORD'] = DB_PASSWORD
+        
+        result = subprocess.run(cmd, env=env, capture_output=True, text=True)
+        
+        if result.returncode != 0:
+            app.logger.error(f"数据库备份失败: {result.stderr}")
+            return jsonify({'success': False, 'message': f'备份失败: {result.stderr}'})
+        
+        # 如果需要压缩
+        final_filename = filename
+        download_path = f"/system/backup/download/{filename}"
+        
+        if compress:
+            # 压缩文件
+            compressed_filename = filename + '.gz'
+            compressed_filepath = os.path.join(BACKUP_STORAGE_PATH, compressed_filename)
+            
+            with open(filepath, 'rb') as f_in:
+                with gzip.open(compressed_filepath, 'wb') as f_out:
+                    shutil.copyfileobj(f_in, f_out)
+            
+            # 删除未压缩的文件
+            os.remove(filepath)
+            
+            final_filename = compressed_filename
+            download_path = f"/system/backup/download/{compressed_filename}"
+        
+        app.logger.info(f"数据库备份成功: {final_filename}")
+        return jsonify({
+            'success': True,
+            'message': '数据库备份成功',
+            'filename': final_filename,
+            'download_url': download_path,
+            'timestamp': timestamp
+        })
+        
+    except Exception as e:
+        app.logger.error(f"备份过程中出错: {str(e)}")
+        return jsonify({'success': False, 'message': f'备份失败: {str(e)}'})
+
+@app.route('/system/backup/list')
+@login_required
+@permission_required('manage_system')
+def list_backups():
+    """列出所有备份文件"""
+    try:
+        backups = []
+        backup_dir = Path(BACKUP_STORAGE_PATH)
+        
+        if backup_dir.exists():
+            for file in backup_dir.iterdir():
+                if file.is_file() and file.suffix in ['.sql', '.gz', '.zip']:
+                    stats = file.stat()
+                    backups.append({
+                        'filename': file.name,
+                        'size': format_file_size(stats.st_size),
+                        'created_at': datetime.fromtimestamp(stats.st_ctime).strftime('%Y-%m-%d %H:%M:%S'),
+                        'filepath': str(file)
+                    })
+        
+        # 按创建时间倒序排序
+        backups.sort(key=lambda x: x['created_at'], reverse=True)
+        
+        return jsonify({
+            'success': True,
+            'backups': backups
+        })
+        
+    except Exception as e:
+        app.logger.error(f"列出备份文件失败: {str(e)}")
+        return jsonify({'success': False, 'message': f'列出备份文件失败: {str(e)}'})
+
+@app.route('/system/backup/download/<filename>')
+@login_required
+@permission_required('manage_system')
+def download_backup(filename):
+    """下载备份文件"""
+    try:
+        filepath = os.path.join(BACKUP_STORAGE_PATH, filename)
+        
+        if not os.path.exists(filepath):
+            return "文件不存在", 404
+        
+        return send_file(filepath, as_attachment=True)
+        
+    except Exception as e:
+        app.logger.error(f"下载备份文件失败: {str(e)}")
+        return "下载失败", 500
+
+@app.route('/system/backup/delete/<filename>', methods=['DELETE'])
+@login_required
+@permission_required('manage_system')
+def delete_backup(filename):
+    """删除备份文件"""
+    try:
+        # 只有超级管理员可以删除
+        if not current_user.is_superuser:
+            return jsonify({'success': False, 'message': '需要超级管理员权限'})
+        
+        filepath = os.path.join(BACKUP_STORAGE_PATH, filename)
+        
+        if not os.path.exists(filepath):
+            return jsonify({'success': False, 'message': '文件不存在'})
+        
+        os.remove(filepath)
+        app.logger.info(f"备份文件已删除: {filename}")
+        
+        return jsonify({
+            'success': True,
+            'message': '备份文件已删除'
+        })
+        
+    except Exception as e:
+        app.logger.error(f"删除备份文件失败: {str(e)}")
+        return jsonify({'success': False, 'message': f'删除失败: {str(e)}'})
+
+@app.route('/system/stats')
+@login_required
+@permission_required('manage_system')
+def system_stats():
+    """获取系统统计信息"""
+    try:
+        # 数据库大小（估算）
+        db_size = 0
+        try:
+            conn = psycopg2.connect(
+                host=DB_HOST,
+                port=DB_PORT,
+                user=DB_USER,
+                password=DB_PASSWORD,
+                database=DB_NAME
+            )
+            cursor = conn.cursor()
+            
+            # 获取数据库大小
+            cursor.execute("SELECT pg_database_size(%s)", (DB_NAME,))
+            db_size_bytes = cursor.fetchone()[0]
+            db_size = format_file_size(db_size_bytes)
+            
+            cursor.close()
+            conn.close()
+        except Exception as e:
+            app.logger.warning(f"获取数据库大小失败: {str(e)}")
+            db_size = "未知"
+        
+        # 备份文件统计
+        backup_dir = Path(BACKUP_STORAGE_PATH)
+        backup_count = 0
+        total_backup_size = 0
+        last_backup = None
+        
+        if backup_dir.exists():
+            backup_files = list(backup_dir.glob('*.sql')) + list(backup_dir.glob('*.gz')) + list(backup_dir.glob('*.zip'))
+            backup_count = len(backup_files)
+            
+            for file in backup_files:
+                total_backup_size += file.stat().st_size
+            
+            if backup_files:
+                # 按修改时间排序，获取最新的备份
+                latest_backup = max(backup_files, key=lambda f: f.stat().st_mtime)
+                last_backup = datetime.fromtimestamp(latest_backup.stat().st_mtime).strftime('%Y-%m-%d %H:%M')
+        
+        return jsonify({
+            'success': True,
+            'database_size': db_size,
+            'backup_count': backup_count,
+            'total_backup_size': format_file_size(total_backup_size),
+            'last_backup': last_backup
+        })
+        
+    except Exception as e:
+        app.logger.error(f"获取系统统计失败: {str(e)}")
+        return jsonify({'success': False, 'message': f'获取统计失败: {str(e)}'})
+
+def format_file_size(bytes):
+    """格式化文件大小"""
+    if bytes < 1024:
+        return f"{bytes} B"
+    elif bytes < 1024 * 1024:
+        return f"{bytes / 1024:.1f} KB"
+    elif bytes < 1024 * 1024 * 1024:
+        return f"{bytes / (1024 * 1024):.1f} MB"
+    else:
+        return f"{bytes / (1024 * 1024 * 1024):.2f} GB"
+
 # -------------------------- 操作员功能 --------------------------
 @app.route('/operator/dashboard')
 @operator_login_required
 def operator_dashboard():
     """操作员个人仪表板，显示当天生产记录"""
     operator_id = session.get('operator_id')
-    operator = OperatorGroup.query.get(operator_id)
+    operator = db.session.get(OperatorGroup, int(operator_id))
     
     if not operator:
         flash('操作员信息不存在！', 'danger')
@@ -1760,30 +2047,51 @@ def operator_dashboard():
         # 如果是组管理员，获取组内统计信息
         group_total = total_today  # 组内总产量就是today_records的总和
         
-        # 获取已签字的组员（只统计组管理员）
-        signed_members = [m for m in group_members if m.group_owner and m.signature_file]
-        
-        # 将签名时间也传递给模板
+        # 获取今天已签字的组员（只统计组管理员）
+        signed_members = []
         group_members_with_signatures = []
         for member in group_members:
-            # 只显示组管理员的签名信息
+            # 判断是否是组管理员
             if member.group_owner:
+                # 检查是否有签名文件且签名时间是今天
+                is_signed_today = False
+                signature_time_display = None
+                
+                if member.signature_file and member.signature_time:
+                    # 检查签名时间是否是今天
+                    if member.signature_time.date() == today:
+                        is_signed_today = True
+                        signature_time_display = member.signature_time.strftime('%H:%M')
+                        signed_members.append(member)
+                    else:
+                        # 签名不是今天的，视为未签字
+                        is_signed_today = False
+                        signature_time_display = f"{member.signature_time.strftime('%m-%d %H:%M')}"
+                else:
+                    # 没有签名或签名时间
+                    is_signed_today = False
+                    signature_time_display = None
+                
                 group_members_with_signatures.append({
                     'id': member.id,
                     'operator_name': member.operator_name,
                     'group_owner': member.group_owner,
                     'signature_file': member.signature_file,
                     'signature_time': member.signature_time,
-                    'is_signed': bool(member.signature_file)
+                    'is_signed_today': is_signed_today,  # 新增：今天是否已签字
+                    'signature_time_display': signature_time_display,
+                    'is_signed': bool(member.signature_file)  # 保留历史记录
                 })
             else:
-                # 普通操作员不显示签名信息
+                # 普通操作员不显示签字状态
                 group_members_with_signatures.append({
                     'id': member.id,
                     'operator_name': member.operator_name,
                     'group_owner': member.group_owner,
-                    'signature_file': None,  # 普通操作员不显示签名
+                    'signature_file': None,
                     'signature_time': None,
+                    'is_signed_today': False,
+                    'signature_time_display': None,
                     'is_signed': False
                 })
     
@@ -1816,10 +2124,10 @@ def operator_dashboard():
         # 普通操作员不需要组内信息
         group_members_with_signatures = []
         group_total = 0
-        signed_members = 0
+        signed_members = []
 
     return render_template('operator_dashboard.html',
-                         operator=operator,  # 确保传递完整的操作员对象
+                         operator=operator,
                          operator_name=operator.operator_name,
                          today_records=today_records,
                          total_today=total_today,
@@ -1837,7 +2145,7 @@ def operator_dashboard():
 def operator_change_password():
     """操作员修改密码（AJAX版本）"""
     operator_id = session.get('operator_id')
-    operator = OperatorGroup.query.get(operator_id)
+    operator = db.session.get(OperatorGroup, int(operator_id))
     
     if not operator:
         return jsonify({'success': False, 'message': '操作员不存在！'})
@@ -1875,7 +2183,7 @@ def operator_change_password():
 @permission_required('manage_operator')
 def reset_operator_password(id):
     """重置操作员密码（AJAX版本）"""
-    operator = OperatorGroup.query.get_or_404(id)
+    operator = db.session.get(OperatorGroup, int(id))
     
     password = request.form.get('password', '').strip()
     
@@ -1904,8 +2212,8 @@ def grant_group_owner(id):
     # 验证管理员密码
     if not current_user.check_password(password):
         return jsonify({'success': False, 'message': '管理员密码错误！'})
-    
-    operator = OperatorGroup.query.get_or_404(id)
+
+    operator = db.session.get(OperatorGroup, int(id))
     
     try:
         # 移除同组的原组管理员
@@ -1940,7 +2248,7 @@ def revoke_group_owner(id):
     if not current_user.check_password(password):
         return jsonify({'success': False, 'message': '管理员密码错误！'})
     
-    operator = OperatorGroup.query.get_or_404(id)
+    operator = db.session.get(OperatorGroup, int(id))
     
     try:
         operator.group_owner = False
@@ -1961,7 +2269,7 @@ def revoke_group_owner(id):
 def sign_group_records():
     """组管理员签字确认组内记录"""
     operator_id = session.get('operator_id')
-    operator = OperatorGroup.query.get(operator_id)
+    operator = db.session.get(OperatorGroup, int(operator_id))
     
     if not operator or not operator.group_owner:
         return jsonify({'success': False, 'message': '无组管理员权限！'})
@@ -1982,13 +2290,41 @@ def sign_group_records():
         operator.signature_file = filename
         operator.signature_time = datetime.now()
         
+        # 3. 冻结该组当天所有生产记录
+        today = date.today()
+        start_of_day = datetime.combine(today, datetime.min.time())
+        end_of_day = datetime.combine(today, datetime.max.time())
+        
+        # 获取组内所有操作员
+        group_members = OperatorGroup.query.filter_by(
+            group_name=operator.group_name
+        ).all()
+        member_names = [member.operator_name for member in group_members]
+        
+        # 获取当天所有记录，然后过滤出包含组内操作员的记录
+        all_today_records = ProductionRecord.query.filter(
+            ProductionRecord.create_time >= start_of_day,
+            ProductionRecord.create_time <= end_of_day
+        ).all()
+        
+        # 冻结符合条件的记录
+        freeze_count = 0
+        for record in all_today_records:
+            # 将逗号分隔的操作员字符串转换为列表
+            operators_list = [op.strip() for op in record.operators.split(',')]
+            # 检查是否有组内操作员参与此记录
+            if any(op in member_names for op in operators_list):
+                record.is_freeze = True
+                freeze_count += 1
+        
         db.session.commit()
         
         return jsonify({
             'success': True, 
-            'message': '签字确认成功！您已代表全组成员确认今日生产记录。',
+            'message': f'签字确认成功！已冻结 {freeze_count} 条生产记录。您已代表全组成员确认今日生产记录。',
             'signature_url': url_for('serve_signature_file', filename=filename, _external=True),
-            'signature_time': operator.signature_time.strftime('%Y-%m-%d %H:%M:%S')
+            'signature_time': operator.signature_time.strftime('%Y-%m-%d %H:%M:%S'),
+            'freeze_count': freeze_count
         })
     except Exception as e:
         db.session.rollback()
@@ -2001,7 +2337,7 @@ def sign_group_records():
 def clear_signature():
     """清除组管理员签名"""
     operator_id = session.get('operator_id')
-    operator = OperatorGroup.query.get(operator_id)
+    operator = db.session.get(OperatorGroup, int(operator_id))
     
     if not operator or not operator.group_owner:
         return jsonify({'success': False, 'message': '无组管理员权限！'})
@@ -2027,8 +2363,8 @@ def clear_signature():
 def get_operator_signature(id):
     """获取操作员签名（组内成员可查看）"""
     # 检查权限：只能查看自己或同组成员的签名
-    operator = OperatorGroup.query.get_or_404(id)
-    current_operator = OperatorGroup.query.get(session.get('operator_id'))
+    operator = db.session.get(OperatorGroup, int(id))
+    current_operator = db.session.get(OperatorGroup, int(operator_id))
     
     if not current_operator:
         return jsonify({'success': False, 'message': '未登录！'})
@@ -2055,7 +2391,7 @@ def get_operator_signature(id):
 def get_group_signatures():
     """获取组内成员的签名状态"""
     operator_id = session.get('operator_id')
-    current_operator = OperatorGroup.query.get(operator_id)
+    current_operator = db.session.get(OperatorGroup, int(operator_id))
     
     if not current_operator:
         return jsonify({'success': False, 'message': '操作员不存在！'})
@@ -2102,4 +2438,5 @@ def serve_signature_file(filename):
 
 # -------------------------- 启动应用 --------------------------
 if __name__ == '__main__':
+    
     app.run(debug=True, host='0.0.0.0', port=80)
