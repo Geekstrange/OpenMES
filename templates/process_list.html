@@ -353,6 +353,18 @@
             }
         }
 
+        /* 权限提示动画 */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -60%);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%);
+            }
+        }
+
         /* 响应式调整 */
         @media (max-width: 768px) {
             .container {
@@ -462,6 +474,13 @@
             background: linear-gradient(135deg, #5a0fd9, #643ab0);
             transform: translateY(-1px);
             box-shadow: 0 4px 8px rgba(102, 16, 242, 0.2);
+        }
+        
+        /* 禁用状态按钮样式 */
+        .btn-link.disabled, .btn-link-next.disabled, .btn-delete.disabled, .btn-add.disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            pointer-events: none;
         }
         
         /* 模态框样式 */
@@ -692,7 +711,14 @@
             <div class="page-title">工序管理</div>
             <div class="action-buttons">
                 <a href="{{ url_for('index') }}" class="btn btn-back">← 返回首页</a>
+                
+                <!-- 添加工序按钮权限检查 -->
+                {% if current_user.has_permission('process_management', 'create') %}
                 <a href="{{ url_for('add_process') }}" class="btn btn-add">+ 添加工序</a>
+                {% else %}
+                <!-- 无权限用户的提示按钮 -->
+                <span class="btn btn-add disabled" title="您没有权限添加工序">+ 添加工序</span>
+                {% endif %}
             </div>
         </div>
 
@@ -765,18 +791,37 @@
                             </td>
                             <td>
                                 <div class="actions">
+                                    <!-- 删除按钮权限检查 -->
+                                    {% if current_user.has_permission('process_management', 'delete') %}
                                     <a href="{{ url_for('delete_process', id=process.id) }}" class="btn btn-delete"
-                                        onclick="return confirmDeleteProcess('{{ process.process_name }}')">
+                                    onclick="return confirmDeleteProcess('{{ process.process_name }}')">
                                         删除
                                     </a>
+                                    {% else %}
+                                    <!-- 无权限用户的提示按钮 -->
+                                    <span class="btn btn-delete disabled" title="您没有权限删除工序">
+                                        删除
+                                    </span>
+                                    {% endif %}
+                                    
                                     <!-- 关联操作员组按钮 -->
+                                    {% if current_user.has_permission('process_management', 'advanced') %}
                                     <a href="#" class="btn btn-link" data-process-id="{{ process.id }}" data-process-name="{{ process.process_name }}">
                                         🔗 关联组
                                     </a>
-                                    <!-- 新增：关联下工序按钮 -->
+                                    <!-- 关联下工序按钮 -->
                                     <a href="#" class="btn btn-link-next" data-process-id="{{ process.id }}" data-process-name="{{ process.process_name }}">
                                         ⏭️ 下工序
                                     </a>
+                                    {% else %}
+                                    <!-- 无权限用户的提示按钮 -->
+                                    <span class="btn btn-link disabled" title="您没有权限使用此功能">
+                                        🔗 关联组
+                                    </span>
+                                    <span class="btn btn-link-next disabled" title="您没有权限使用此功能">
+                                        ⏭️ 下工序
+                                    </span>
+                                    {% endif %}
                                 </div>
                             </td>
                         </tr>
@@ -794,8 +839,7 @@
         </div>
 
         <!-- 注意事项 -->
-        <div
-            style="background: #fff3cd; color: #856404; padding: 15px; border-radius: 6px; border-left: 4px solid #ffc107; margin-top: 20px;">
+        <div style="background: #fff3cd; color: #856404; padding: 15px; border-radius: 6px; border-left: 4px solid #ffc107; margin-top: 20px;">
             <div style="font-weight: 600; margin-bottom: 5px; display: flex; align-items: center; gap: 8px;">
                 <span>⚠️</span> 注意事项
             </div>
@@ -1106,6 +1150,67 @@
             currentNextProcessName = '';
         }
 
+        // 显示更友好的权限提示
+        function showPermissionAlert() {
+            // 创建自定义提示框
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'permission-alert';
+            alertDiv.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: white;
+                padding: 30px;
+                border-radius: 10px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+                z-index: 9999;
+                max-width: 400px;
+                text-align: center;
+                animation: fadeIn 0.3s ease-out;
+            `;
+            
+            alertDiv.innerHTML = `
+                <div style="font-size: 48px; color: #ffc107; margin-bottom: 15px;">🔒</div>
+                <h3 style="color: #333; margin-bottom: 10px;">权限不足</h3>
+                <p style="color: #666; margin-bottom: 20px; line-height: 1.5;">
+                    您没有权限访问此功能。<br>
+                    如需使用"关联组"或"下工序"功能，请联系管理员为您分配权限。
+                </p>
+                <button onclick="this.parentElement.remove(); document.querySelector('#permissionOverlay')?.remove()" style="
+                    background: #007bff;
+                    color: white;
+                    border: none;
+                    padding: 10px 25px;
+                    border-radius: 5px;
+                    cursor: pointer;
+                    font-weight: 500;
+                ">
+                    知道了
+                </button>
+            `;
+            
+            document.body.appendChild(alertDiv);
+            
+            // 添加遮罩层
+            const overlay = document.createElement('div');
+            overlay.id = 'permissionOverlay';
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.5);
+                z-index: 9998;
+            `;
+            overlay.onclick = function() {
+                alertDiv.remove();
+                overlay.remove();
+            };
+            document.body.appendChild(overlay);
+        }
+
         // 事件绑定
         document.addEventListener('DOMContentLoaded', function() {
             // 关联组按钮点击事件
@@ -1114,8 +1219,16 @@
                     (e.target.parentElement && e.target.parentElement.matches('.btn-link'))) {
                     e.preventDefault();
                     
-                    // 获取工序信息
+                    // 获取按钮元素
                     const btn = e.target.matches('.btn-link') ? e.target : e.target.parentElement;
+                    
+                    // 检查按钮是否被禁用（无权限）
+                    if (btn.classList.contains('disabled')) {
+                        showPermissionAlert();
+                        return;
+                    }
+                    
+                    // 获取工序信息
                     const row = btn.closest('tr');
                     const processId = row.querySelector('.process-badge').textContent.replace('#', '');
                     const processName = row.querySelector('td:nth-child(2)').textContent.trim();
@@ -1130,8 +1243,16 @@
                     (e.target.parentElement && e.target.parentElement.matches('.btn-link-next'))) {
                     e.preventDefault();
                     
-                    // 获取工序信息
+                    // 获取按钮元素
                     const btn = e.target.matches('.btn-link-next') ? e.target : e.target.parentElement;
+                    
+                    // 检查按钮是否被禁用（无权限）
+                    if (btn.classList.contains('disabled')) {
+                        showPermissionAlert();
+                        return;
+                    }
+                    
+                    // 获取工序信息
                     const row = btn.closest('tr');
                     const processId = row.querySelector('.process-badge').textContent.replace('#', '');
                     const processName = row.querySelector('td:nth-child(2)').textContent.trim();

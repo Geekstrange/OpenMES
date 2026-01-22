@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict zSOED64daEnLATTJaOW6A0bJkHtC3vcLL5IwX86a9h4Y11LDe6c0BUlRhfCpFFg
+\restrict c1UmhQoEJAhdNBrqaCm2ds4wctxm4uUJECzW7QVwgjXclmm7nPm81U4xoFaP7kl
 
 -- Dumped from database version 18.1
 -- Dumped by pg_dump version 18.1
@@ -177,7 +177,8 @@ CREATE TABLE public.production_users (
     can_manage_process boolean DEFAULT false,
     can_manage_operator boolean DEFAULT false,
     granted_by integer,
-    user_level integer DEFAULT 0
+    user_level integer DEFAULT 0,
+    can_manage_system boolean DEFAULT false
 );
 
 
@@ -261,8 +262,8 @@ COPY public.production_records (id, product_code, process, number, create_time, 
 -- Data for Name: production_users; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.production_users (id, username, password_hash, create_time, update_time, can_add_record, can_manage_users, can_manage_process, can_manage_operator, granted_by, user_level) FROM stdin;
-0	root	pbkdf2:sha256:260000$gthIOBj2HtxF2WsM$e25519d3b1ff290ed8981e5fb8296ee31268ad04701dfbacdab6cd3599de0994	1970-01-01 08:00:00	2025-12-27 15:30:43.317929	t	t	t	t	\N	3
+COPY public.production_users (id, username, password_hash, create_time, update_time, can_add_record, can_manage_users, can_manage_process, can_manage_operator, granted_by, user_level, can_manage_system) FROM stdin;
+0	root	pbkdf2:sha256:260000$gthIOBj2HtxF2WsM$e25519d3b1ff290ed8981e5fb8296ee31268ad04701dfbacdab6cd3599de0994	1970-01-01 08:00:00	2025-12-27 15:30:43.317929	t	t	t	t	\N	3	t
 \.
 
 
@@ -383,5 +384,5 @@ ALTER TABLE ONLY public.production_users
 -- PostgreSQL database dump complete
 --
 
-\unrestrict zSOED64daEnLATTJaOW6A0bJkHtC3vcLL5IwX86a9h4Y11LDe6c0BUlRhfCpFFg
+\unrestrict c1UmhQoEJAhdNBrqaCm2ds4wctxm4uUJECzW7QVwgjXclmm7nPm81U4xoFaP7kl
 

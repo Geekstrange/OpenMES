@@ -219,11 +219,6 @@
             gap: 5px;
         }
 
-        .selection-count::before {
-            content: "✓";
-            font-size: 10px;
-        }
-
         /* 按钮区域 */
         .form-actions {
             display: flex;
@@ -548,7 +543,7 @@
                             <div class="multiple-tip">
                                 提示：按住 Ctrl 键可多选操作员，按住 Shift 键可连续选择
                             </div>
-                            <div id="operator-count" class="selection-count">已选择 0 名操作员</div>
+                            <div id="operator-count" class="selection-count" style="display: none;">已选择 0 名操作员</div>
                         </div>
                     </div>
 
@@ -586,6 +581,9 @@
         const operatorSelect = document.getElementById('operator-select');
         const nextProcessSelect = document.getElementById('next-process-select');
         const nextProcessHint = document.getElementById('next-process-hint');
+        
+        // 新增：跟踪用户是否操作过
+        let hasUserInteracted = false;
 
         // 自动调整多选下拉框高度
         function autoResizeSelect(select) {
@@ -606,7 +604,13 @@
             
             const countElement = document.getElementById('operator-count');
             if (countElement) {
-                countElement.textContent = `已选择 ${selectedOperators.length} 名操作员`;
+                // 如果有选择操作或者用户已交互，则显示
+                if (selectedOperators.length > 0 || hasUserInteracted) {
+                    countElement.style.display = 'block';
+                    countElement.textContent = `已选择 ${selectedOperators.length} 名操作员`;
+                } else {
+                    countElement.style.display = 'none';
+                }
             }
         }
 
@@ -635,7 +639,8 @@
                     hintOption.textContent = `共 ${operators.length} 名操作员`;
                     operatorSelect.appendChild(hintOption);
                     
-                    // 更新已选计数
+                    // 重置用户交互状态
+                    hasUserInteracted = false;
                     updateOperatorCount();
                     
                     // 等待DOM更新后调整高度
@@ -647,6 +652,7 @@
                     option.value = '';
                     option.textContent = '该组暂无操作员';
                     operatorSelect.appendChild(option);
+                    updateOperatorCount();
                 }
             } else {
                 // 未选择组时显示提示
@@ -654,6 +660,10 @@
                 option.value = '';
                 option.textContent = '请先选择组别';
                 operatorSelect.appendChild(option);
+                
+                // 重置用户交互状态
+                hasUserInteracted = false;
+                updateOperatorCount();
                 
                 // 重置高度
                 setTimeout(() => {
@@ -669,6 +679,7 @@
             if (operatorSelect) {
                 // 监听选择变化
                 operatorSelect.addEventListener('change', function() {
+                    hasUserInteracted = true; // 标记用户已交互
                     updateOperatorCount();
                     
                     // 短暂延迟后调整高度
@@ -677,9 +688,14 @@
                     }, 10);
                 });
                 
+                // 监听点击事件（用户直接点击下拉框也视为交互）
+                operatorSelect.addEventListener('click', function() {
+                    hasUserInteracted = true;
+                });
+                
                 // 获得焦点时增加高度
                 operatorSelect.addEventListener('focus', function() {
-                    // 保存当前高度
+                    hasUserInteracted = true; // 获得焦点也视为交互
                     const currentHeight = parseInt(getComputedStyle(this).height);
                     if (currentHeight < 120) {
                         this.style.minHeight = '120px';
@@ -833,6 +849,7 @@
                 // 短暂延迟后调整高度
                 setTimeout(() => {
                     autoResizeSelect(operatorSelect);
+                    // 初始不显示计数
                     updateOperatorCount();
                 }, 100);
             }
@@ -907,9 +924,13 @@
                 nextProcessHint.textContent = '';
                 nextProcessHint.className = 'next-process-hint';
                 
-                // 清空已选计数
+                // 重置用户交互状态
+                hasUserInteracted = false;
+                
+                // 清空已选计数并隐藏
                 const countElement = document.getElementById('operator-count');
                 if (countElement) {
+                    countElement.style.display = 'none';
                     countElement.textContent = '已选择 0 名操作员';
                 }
 

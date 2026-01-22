@@ -279,7 +279,7 @@
             display: inline-block;
         }
 
-        /* 权限徽章 */
+        /* 权限徽章样式 - 保持原有样式，添加权限值显示 */
         .permission-badge {
             background: #e8f4fd;
             color: #0056b3;
@@ -288,6 +288,15 @@
             font-size: 11px;
             margin-right: 4px;
             border: 1px solid #b3d7ff;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .permission-value {
+            font-weight: bold;
+            font-size: 10px;
+            color: #0056b3;
         }
 
         /* 消息提示样式 */
@@ -482,6 +491,15 @@
             flex-wrap: nowrap;
             justify-content: flex-start;
         }
+
+        /* 禁用状态按钮样式 - 新增 */
+        .btn-add.disabled,
+        .btn-edit.disabled,
+        .btn-delete.disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
     </style>
 </head>
 
@@ -543,7 +561,14 @@
             <div class="page-title">用户管理</div>
             <div class="action-buttons">
                 <a href="{{ url_for('index') }}" class="btn btn-back">← 返回首页</a>
+                
+                <!-- 添加用户按钮权限检查 -->
+                {% if current_user.has_permission('user_management', 'create') %}
                 <a href="{{ url_for('add_user') }}" class="btn btn-add">+ 添加用户</a>
+                {% else %}
+                <!-- 无权限用户的提示按钮 -->
+                <span class="btn btn-add disabled" title="您没有权限添加用户">+ 添加用户</span>
+                {% endif %}
             </div>
         </div>
 
@@ -564,13 +589,33 @@
                     <span class="user-badge" style="margin-left: 8px;">普通用户</span>
                     {% endif %}
 
-                    <!-- 显示具体权限 -->
+                    <!-- 显示具体权限值 -->
                     <div style="margin-top: 5px; font-size: 12px;">
-                        {% if current_user.can_add_record %}<span class="permission-badge">📝添加记录</span>{% endif %}
-                        {% if current_user.can_manage_process %}<span class="permission-badge">🛠️工序管理</span>{% endif %}
-                        {% if current_user.can_manage_operator %}<span class="permission-badge">👷操作员管理</span>{% endif%}
-                        {% if current_user.can_manage_users %}<span class="permission-badge">👥用户管理</span>{% endif %}
-                        {% if current_user.can_manage_system %}<span class="permission-badge">⚙️系统管理</span>{% endif %}
+                        {% if current_user.has_permission('production_management') %}
+                        <span class="permission-badge">📝生产管理
+                            <span class="permission-value">{{ current_user.permissions.get('production_management', 0) }}</span>
+                        </span>
+                        {% endif %}
+                        {% if current_user.has_permission('process_management') %}
+                        <span class="permission-badge">🛠️工序管理
+                            <span class="permission-value">{{ current_user.permissions.get('process_management', 0) }}</span>
+                        </span>
+                        {% endif %}
+                        {% if current_user.has_permission('operator_management') %}
+                        <span class="permission-badge">👷操作员管理
+                            <span class="permission-value">{{ current_user.permissions.get('operator_management', 0) }}</span>
+                        </span>
+                        {% endif %}
+                        {% if current_user.has_permission('user_management') %}
+                        <span class="permission-badge">👥用户管理
+                            <span class="permission-value">{{ current_user.permissions.get('user_management', 0) }}</span>
+                        </span>
+                        {% endif %}
+                        {% if current_user.has_permission('system_management') %}
+                        <span class="permission-badge">⚙️系统管理
+                            <span class="permission-value">{{ current_user.permissions.get('system_management', 0) }}</span>
+                        </span>
+                        {% endif %}
                     </div>
                 </span>
             </div>
@@ -646,29 +691,70 @@
                                 {% endif %}
                             </td>
                             <td>
-                                {% if user.can_add_record %}<span class="permission-badge">📝</span>{% endif %}
-                                {% if user.can_manage_process %}<span class="permission-badge">🛠️</span>{% endif %}
-                                {% if user.can_manage_operator %}<span class="permission-badge">👷</span>{% endif %}
-                                {% if user.can_manage_users %}<span class="permission-badge">👥</span>{% endif %}
-                                {% if user.can_manage_system %}<span class="permission-badge">⚙️</span>{% endif %}
+                                {% if user.has_permission('production_management') %}
+                                <span class="permission-badge">📝
+                                    <span class="permission-value">{{ user.permissions.get('production_management', 0) }}</span>
+                                </span>
+                                {% endif %}
+                                {% if user.has_permission('process_management') %}
+                                <span class="permission-badge">🛠️
+                                    <span class="permission-value">{{ user.permissions.get('process_management', 0) }}</span>
+                                </span>
+                                {% endif %}
+                                {% if user.has_permission('operator_management') %}
+                                <span class="permission-badge">👷
+                                    <span class="permission-value">{{ user.permissions.get('operator_management', 0) }}</span>
+                                </span>
+                                {% endif %}
+                                {% if user.has_permission('user_management') %}
+                                <span class="permission-badge">👥
+                                    <span class="permission-value">{{ user.permissions.get('user_management', 0) }}</span>
+                                </span>
+                                {% endif %}
+                                {% if user.has_permission('system_management') %}
+                                <span class="permission-badge">⚙️
+                                    <span class="permission-value">{{ user.permissions.get('system_management', 0) }}</span>
+                                </span>
+                                {% endif %}
                             </td>
                             <td>{{ user.create_time.strftime('%Y-%m-%d %H:%M') }}</td>
                             <td>{{ user.update_time.strftime('%Y-%m-%d %H:%M') }}</td>
                             <td>
                                 <div class="action-buttons">
-                                    <!-- 完全按照index.html中冻结记录的按钮处理方式 -->
-                                    {% if current_user.can_edit_user(user) or (current_user.user_level == 0 and current_user.id == user.id) %}
+                                    <!-- 编辑按钮权限检查 -->
+                                    {% if current_user.can_edit_user(user) and current_user.has_permission('user_management', 'update') %}
+                                    <a href="{{ url_for('edit_user', id=user.id) }}" class="btn btn-edit">编辑</a>
+                                    {% elif current_user.user_level == 0 and current_user.id == user.id and current_user.has_permission('user_management', 'update') %}
+                                    <!-- 普通用户可以编辑自己 -->
                                     <a href="{{ url_for('edit_user', id=user.id) }}" class="btn btn-edit">编辑</a>
                                     {% else %}
-                                    <button class="btn btn-edit" disabled style="opacity: 0.5; cursor: not-allowed;" title="无权限编辑该用户">编辑</button>
+                                    <!-- 无权限编辑的提示按钮 -->
+                                    {% set edit_title = "无权限编辑该用户" %}
+                                    {% if not current_user.has_permission('user_management', 'update') %}
+                                        {% set edit_title = "您没有编辑用户的权限" %}
+                                    {% elif not current_user.can_edit_user(user) and not (current_user.user_level == 0 and current_user.id == user.id) %}
+                                        {% set edit_title = "无权限编辑该用户" %}
+                                    {% endif %}
+                                    <button class="btn btn-edit disabled" disabled title="{{ edit_title }}">编辑</button>
                                     {% endif %}
                                     
-                                    {% if user.id != current_user.id and user.user_level != 3 and current_user.can_edit_user(user) %}
+                                    <!-- 删除按钮权限检查 -->
+                                    {% if user.id != current_user.id and user.user_level != 3 and current_user.can_edit_user(user) and current_user.has_permission('user_management', 'delete') %}
                                     <a href="{{ url_for('delete_user', id=user.id) }}" class="btn btn-delete"
-                                        onclick="return confirm('确定要删除用户"{{ user.username }}"吗？')">删除</a>
+                                        onclick="return confirmDeleteUser('{{ user.username }}')">删除</a>
                                     {% else %}
-                                    <button class="btn btn-delete" disabled style="opacity: 0.5; cursor: not-allowed;" 
-                                            title="{% if user.id == current_user.id %}不能删除自己{% elif user.user_level == 3 %}不能删除超级管理员{% else %}无权限删除该用户{% endif %}">删除</button>
+                                    <!-- 无权限删除的提示按钮 -->
+                                    {% set delete_title = "无权限删除该用户" %}
+                                    {% if user.id == current_user.id %}
+                                        {% set delete_title = "不能删除自己" %}
+                                    {% elif user.user_level == 3 %}
+                                        {% set delete_title = "不能删除超级管理员" %}
+                                    {% elif not current_user.can_edit_user(user) %}
+                                        {% set delete_title = "无权限删除该用户" %}
+                                    {% elif not current_user.has_permission('user_management', 'delete') %}
+                                        {% set delete_title = "您没有删除用户的权限" %}
+                                    {% endif %}
+                                    <button class="btn btn-delete disabled" disabled title="{{ delete_title }}">删除</button>
                                     {% endif %}
                                 </div>
                             </td>
@@ -706,6 +792,21 @@
                 {% if current_user.user_level == 3 %}
                 <p style="color: #dc3545; font-weight: 600;">⚠️ 您当前以超级管理员身份登录，可以看到所有用户。</p>
                 {% endif %}
+                <p style="margin-top: 10px; font-weight: 600;">权限值说明：</p>
+                <div style="font-size: 12px; background: #f8f9fa; padding: 8px; border-radius: 4px; margin-top: 5px;">
+                    <p>权限值是5位二进制权限位的十进制表示：</p>
+                    <p><strong>R (1)</strong> - 查看权限</p>
+                    <p><strong>C (2)</strong> - 创建权限</p>
+                    <p><strong>U (4)</strong> - 更新权限</p>
+                    <p><strong>D (8)</strong> - 删除权限</p>
+                    <p><strong>A (16)</strong> - 高级权限</p>
+                    <p style="margin-top: 8px;">例如：</p>
+                    <p>• 31 = 所有权限 (1+2+4+8+16)</p>
+                    <p>• 15 = 基本操作权限 (1+2+4+8)</p>
+                    <p>• 7 = 读/创建/更新权限 (1+2+4)</p>
+                    <p>• 3 = 读/创建权限 (1+2)</p>
+                    <p>• 1 = 只读权限 (1)</p>
+                </div>
             </div>
         </div>
 

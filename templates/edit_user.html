@@ -67,7 +67,7 @@
         }
 
         .container {
-            max-width: 800px;
+            max-width: 900px;
             margin: 0 auto 40px;
             padding: 0 20px;
         }
@@ -235,8 +235,34 @@
         .permission-group h4 {
             margin-bottom: 10px;
             color: #495057;
-            font-size: 14px;
+            font-size: 15px;
             font-weight: 600;
+        }
+        
+        /* 权限徽章 - 用于显示权限值 */
+        .permission-value-badge {
+            background: #e8f4fd;
+            color: #0056b3;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            margin-left: 8px;
+            border: 1px solid #b3d7ff;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-weight: bold;
+        }
+
+        /* 权限位显示 */
+        .permission-bits {
+            font-family: monospace;
+            font-size: 11px;
+            color: #666;
+            background: #f1f3f5;
+            padding: 2px 4px;
+            border-radius: 3px;
+            margin-left: 8px;
         }
 
         /* 复选框样式 */
@@ -244,7 +270,7 @@
             display: flex;
             align-items: center;
             gap: 12px;
-            padding: 12px 0;
+            padding: 8px 0;
         }
 
         .checkbox-label {
@@ -255,6 +281,7 @@
             font-weight: 600;
             color: #444;
             user-select: none;
+            font-size: 13px;
         }
 
         .checkbox-label.disabled {
@@ -521,15 +548,46 @@
             border-left: 3px solid #007bff;
         }
 
-        /* 权限徽章 */
-        .permission-badge {
-            background: #e8f4fd;
+        /* 权限计算器 */
+        .permission-calculator {
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+        
+        .permission-summary {
+            margin-top: 10px;
+            font-weight: bold;
             color: #0056b3;
-            padding: 2px 6px;
-            border-radius: 8px;
-            font-size: 11px;
-            margin-right: 4px;
-            border: 1px solid #b3d7ff;
+        }
+        
+        .bit-explanation {
+            display: inline-flex;
+            gap: 4px;
+            margin-left: 10px;
+        }
+        
+        .bit-box {
+            width: 16px;
+            height: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+        
+        .bit-1 {
+            background: #28a745;
+            color: white;
+        }
+        
+        .bit-0 {
+            background: #6c757d;
+            color: white;
         }
     </style>
 </head>
@@ -607,15 +665,18 @@
                 </span>
             </div>
             <div style="font-size: 12px; margin-top: 5px;">
-                 您可以为该用户授予以下权限：
-                <!-- 显示具体权限 -->
-                    <div style="margin-top: 5px; font-size: 12px;">
-                        {% if current_user.can_add_record %}<span class="permission-badge">📝添加记录</span>{% endif %}
-                        {% if current_user.can_manage_process %}<span class="permission-badge">🛠️工序管理</span>{% endif %}
-                        {% if current_user.can_manage_operator %}<span class="permission-badge">👷操作员管理</span>{% endif%}
-                        {% if current_user.can_manage_users %}<span class="permission-badge">👥用户管理</span>{% endif %}
-                        {% if current_user.can_manage_system %}<span class="permission-badge">⚙️系统管理</span>{% endif %}
-                    </div>
+                <!-- 显示当前用户的权限值 -->
+                {% set current_user_perms = current_user.get_all_permissions() %}
+                您当前的权限值：
+                <div style="margin-top: 5px;">
+                    {% for module, perms in current_user_perms.items() %}
+                        {% if perms.value > 0 %}
+                        <span class="permission-value-badge">
+                            {{ User.MODULES[module] }}: {{ perms.value }}
+                        </span>
+                        {% endif %}
+                    {% endfor %}
+                </div>
             </div>
         </div>
 
@@ -650,7 +711,7 @@
                     </p>
                 </div>
 
-                <form method="post">
+                <form method="post" id="edit-user-form">
                     <div class="form-grid">
                         <div class="form-group">
                             <label class="required">用户名</label>
@@ -674,34 +735,34 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- 用户级别选择 -->
-                    <div class="form-group">
-                        <label>用户级别</label>
-                        {% if user.id == current_user.id %}
-                        <!-- 编辑自己时，显示当前级别但禁用修改 -->
-                        <input type="text" value="{{ user.admin_level_display }}" readonly>
-                        <input type="hidden" name="user_level" value="{{ user.user_level }}">
-                        <div class="password-info">不能修改自己的用户级别</div>
-                        {% else %}
-                        <!-- 编辑其他用户时，正常显示选择框 -->
-                        <select name="user_level" id="user_level" class="form-control" required>
-                            {% for level in grantable_levels %}
-                            <option value="{{ level.level }}" {% if user.user_level==level.level %}selected{% endif %}
-                                class="level-option">
-                                {{ level.name }}
-                                {% if level.level == 3 %} - 拥有所有权限{% endif %}
-                                {% if level.level == 2 %} - 可创建子管理员{% endif %}
-                                {% if level.level == 1 %} - 有限管理权限{% endif %}
-                                {% if level.level == 0 %} - 基础权限{% endif %}
-                            </option>
-                            {% endfor %}
-                        </select>
-                        <div style="font-size: 12px; color: #666; margin-top: 5px;">
-                            当前级别：{{ user.admin_level_display }}
+                        <!-- 用户级别选择 -->
+                        <div class="form-group">
+                            <label class="required">用户级别</label>
+                            {% if user.id == current_user.id %}
+                            <!-- 编辑自己时，显示当前级别但禁用修改 -->
+                            <input type="text" value="{{ user.admin_level_display }}" readonly>
+                            <input type="hidden" name="user_level" value="{{ user.user_level }}">
+                            <div class="password-info">不能修改自己的用户级别</div>
+                            {% else %}
+                            <!-- 编辑其他用户时，正常显示选择框 -->
+                            <select name="user_level" id="user_level" class="form-control" required>
+                                {% for level in grantable_levels %}
+                                <option value="{{ level.level }}" {% if user.user_level==level.level %}selected{% endif %}
+                                    class="level-option">
+                                    {{ level.name }}
+                                    {% if level.level == 3 %} - 拥有所有权限{% endif %}
+                                    {% if level.level == 2 %} - 可创建子管理员{% endif %}
+                                    {% if level.level == 1 %} - 有限管理权限{% endif %}
+                                    {% if level.level == 0 %} - 基础权限{% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div style="font-size: 12px; color: #666; margin-top: 5px;">
+                                当前级别：{{ user.admin_level_display }}
+                            </div>
+                            {% endif %}
                         </div>
-                        {% endif %}
                     </div>
 
                     <!-- 具体权限设置 -->
@@ -715,84 +776,119 @@
                             <p>您正在编辑自己的账户，无法修改权限设置。</p>
                             <p>如需调整权限，请联系其他管理员操作。</p>
                         </div>
+                        <!-- 显示当前用户的权限值 -->
+                        {% set user_perms = user.get_all_permissions() %}
+                        <div style="margin-top: 10px;">
+                            {% for module, perms in user_perms.items() %}
+                                {% if perms.value > 0 %}
+                                <span class="permission-value-badge">
+                                    {{ User.MODULES[module] }}: {{ perms.value }}
+                                </span>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
                     </div>
                     <!-- 添加隐藏字段以保持现有权限 -->
-                    <input type="hidden" name="can_add_record" value="{{ 'on' if user.can_add_record else '' }}">
-                    <input type="hidden" name="can_manage_users" value="{{ 'on' if user.can_manage_users else '' }}">
-                    <input type="hidden" name="can_manage_process" value="{{ 'on' if user.can_manage_process else '' }}">
-                    <input type="hidden" name="can_manage_operator" value="{{ 'on' if user.can_manage_operator else '' }}">
+                    {% set user_perms = user.get_all_permissions() %}
+                    {% for module, perms in user_perms.items() %}
+                        <input type="hidden" name="{{ module }}_read" value="{% if perms.read %}1{% else %}0{% endif %}">
+                        <input type="hidden" name="{{ module }}_create" value="{% if perms.create %}1{% else %}0{% endif %}">
+                        <input type="hidden" name="{{ module }}_update" value="{% if perms.update %}1{% else %}0{% endif %}">
+                        <input type="hidden" name="{{ module }}_delete" value="{% if perms.delete %}1{% else %}0{% endif %}">
+                        <input type="hidden" name="{{ module }}_advanced" value="{% if perms.advanced %}1{% else %}0{% endif %}">
+                    {% endfor %}
                     {% else %}
                     <!-- 编辑其他用户时，显示可修改的权限 -->
-                    <div id="permission-section" style="{% if user.user_level == 3 %}display: none;{% endif %}">
-                        <div class="permission-group">
-                            <h4>具体权限设置</h4>
-                            <div style="font-size: 12px; color: #666; margin-bottom: 10px;">
-                                勾选要授予的具体权限（您只能授予自己拥有的权限）：
-                            </div>
-
-                            {% if 'add_record' in grantable_permissions %}
-                            <div class="checkbox-group">
-                                <label class="checkbox-label {% if user.id == current_user.id %}disabled{% endif %}">
-                                    <input type="checkbox" name="can_add_record" id="can_add_record" {% if
-                                        user.can_add_record %}checked{% endif %} 
-                                        {% if user.id == current_user.id %}disabled{% endif %}>
-                                    <span class="checkbox-custom {% if user.id == current_user.id %}disabled{% endif %}"></span>
-                                    <span>添加生产记录</span>
-                                    <span style="font-size: 12px; color: #666;">（允许添加和编辑生产记录）</span>
-                                </label>
-                            </div>
+                    <!-- 首先过滤掉当前用户没有权限的模块 -->
+                    {% set current_user_perms = current_user.get_all_permissions() %}
+                    <div id="permission-section">
+                        {% set has_any_permission = false %}
+                        {% for module, module_name in modules.items() %}
+                            {% set current_user_module_perms = current_user_perms[module] %}
+                            <!-- 只有当当前用户在该模块有权限（权限值>0）时才显示 -->
+                            {% if current_user_module_perms.value > 0 %}
+                                {% set has_any_permission = true %}
+                                {% set module_perms = user.get_module_permissions(module) %}
+                                <div class="permission-group" id="{{ module }}-permissions">
+                                    <h4>
+                                        {{ module_name }}
+                                        <span class="permission-summary" id="{{ module }}-value">
+                                            权限值: {{ module_perms.value }}
+                                        </span>
+                                        <div class="bit-explanation">
+                                            <span class="bit-box {% if module_perms.read %}bit-1{% else %}bit-0{% endif %}" title="查看权限">R</span>
+                                            <span class="bit-box {% if module_perms.create %}bit-1{% else %}bit-0{% endif %}" title="创建权限">C</span>
+                                            <span class="bit-box {% if module_perms.update %}bit-1{% else %}bit-0{% endif %}" title="更新权限">U</span>
+                                            <span class="bit-box {% if module_perms.delete %}bit-1{% else %}bit-0{% endif %}" title="删除权限">D</span>
+                                            <span class="bit-box {% if module_perms.advanced %}bit-1{% else %}bit-0{% endif %}" title="高级权限">A</span>
+                                        </div>
+                                    </h4>
+                                    
+                                    <div class="permission-calculator" id="{{ module }}-calculator">
+                                        <div style="font-size: 12px; color: #666; margin-bottom: 10px;">
+                                            勾选要授予的具体权限（仅显示您有权授予的权限）：
+                                        </div>
+                                        
+                                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px;">
+                                            {% for perm_name, perm_value, perm_label in [
+                                                ('read', 1, '查看 (1)'),
+                                                ('create', 2, '创建 (2)'),
+                                                ('update', 4, '更新 (4)'),
+                                                ('delete', 8, '删除 (8)'),
+                                                ('advanced', 16, '高级 (16)')
+                                            ] %}
+                                            {% set has_perm = current_user.has_permission(module, perm_name) %}
+                                            {% set is_checked = module_perms[perm_name] %}
+                                            
+                                            <!-- 关键修改：仅当当前用户拥有该权限时才显示复选框 -->
+                                            {% if has_perm %}
+                                            <div class="checkbox-group">
+                                                <!-- 关键修改：使用隐藏字段确保即使复选框被禁用也提交值 -->
+                                                <input type="hidden" 
+                                                       name="{{ module }}_{{ perm_name }}" 
+                                                       id="{{ module }}_{{ perm_name }}_hidden"
+                                                       value="{% if is_checked %}1{% else %}0{% endif %}">
+                                                
+                                                <label class="checkbox-label">
+                                                    <input type="checkbox" 
+                                                           id="{{ module }}_{{ perm_name }}_checkbox"
+                                                           value="1"
+                                                           {% if is_checked %}checked{% endif %}
+                                                           onchange="updatePermissionValue('{{ module }}')">
+                                                    <span class="checkbox-custom"></span>
+                                                    <span>{{ perm_label }}</span>
+                                                </label>
+                                            </div>
+                                            {% else %}
+                                            <!-- 当前用户没有此权限，不显示任何内容，但保留隐藏字段以确保表单提交时保持原有值 -->
+                                            <input type="hidden" 
+                                                   name="{{ module }}_{{ perm_name }}" 
+                                                   id="{{ module }}_{{ perm_name }}_hidden"
+                                                   value="{% if is_checked %}1{% else %}0{% endif %}">
+                                            {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                        
+                                        <div style="margin-top: 8px; font-size: 11px; color: #666;">
+                                            权限位: R(查看)=1, C(创建)=2, U(更新)=4, D(删除)=8, A(高级)=16
+                                        </div>
+                                    </div>
+                                </div>
                             {% endif %}
-
-                            {% if 'manage_process' in grantable_permissions %}
-                            <div class="checkbox-group">
-                                <label class="checkbox-label {% if user.id == current_user.id %}disabled{% endif %}">
-                                    <input type="checkbox" name="can_manage_process" id="can_manage_process" {% if
-                                        user.can_manage_process %}checked{% endif %} 
-                                        {% if user.id == current_user.id %}disabled{% endif %}>
-                                    <span class="checkbox-custom {% if user.id == current_user.id %}disabled{% endif %}"></span>
-                                    <span>工序管理</span>
-                                    <span style="font-size: 12px; color: #666;">（允许管理生产工序）</span>
-                                </label>
+                        {% endfor %}
+                        
+                        <!-- 如果当前用户没有任何模块权限，显示提示
+                        {% if not has_any_permission %}
+                        <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; margin-top: 15px; border: 1px solid #e9ecef;">
+                            <h4 style="margin-bottom: 10px; color: #495057; font-size: 14px; font-weight: 600;">
+                                权限设置不可用
+                            </h4>
+                            <div style="font-size: 13px; color: #666; line-height: 1.5;">
+                                <p>您在当前系统中没有任何模块的管理权限，因此无法为用户设置权限。</p>
+                                <p>如需为用户设置权限，请联系其他管理员为您分配相应的权限。</p>
                             </div>
-                            {% endif %}
-
-                            {% if 'manage_operator' in grantable_permissions %}
-                            <div class="checkbox-group">
-                                <label class="checkbox-label {% if user.id == current_user.id %}disabled{% endif %}">
-                                    <input type="checkbox" name="can_manage_operator" id="can_manage_operator" {% if
-                                        user.can_manage_operator %}checked{% endif %} 
-                                        {% if user.id == current_user.id %}disabled{% endif %}>
-                                    <span class="checkbox-custom {% if user.id == current_user.id %}disabled{% endif %}"></span>
-                                    <span>操作员管理</span>
-                                    <span style="font-size: 12px; color: #666;">（允许管理操作员）</span>
-                                </label>
-                            </div>
-                            {% endif %}
-
-                            {% if 'manage_users' in grantable_permissions %}
-                            <div class="checkbox-group">
-                                <label class="checkbox-label {% if user.id == current_user.id %}disabled{% endif %}">
-                                    <input type="checkbox" name="can_manage_users" id="can_manage_users" {% if
-                                        user.can_manage_users %}checked{% endif %} 
-                                        {% if user.id == current_user.id %}disabled{% endif %}>
-                                    <span class="checkbox-custom {% if user.id == current_user.id %}disabled{% endif %}"></span>
-                                    <span>用户管理</span>
-                                    <span style="font-size: 12px; color: #666;">（允许管理用户账号）</span>
-                                </label>
-                            </div>
-                            {% endif %}
-
-                            {% if 'manage_system' in grantable_permissions %}
-                            <div class="checkbox-group">
-                                <label class="checkbox-label">
-                                    <input type="checkbox" name="can_manage_system" id="can_manage_system">
-                                    <span class="checkbox-custom"></span>
-                                    <span>系统管理</span>
-                                    <span style="font-size: 12px; color: #666;">（允许管理系统设置和备份）</span>
-                                </label>
-                            </div>
-                            {% endif %}
                         </div>
+                        {% endif %} -->
                     </div>
                     {% endif %}
 
@@ -830,88 +926,269 @@
             </div>
         </div>
         {% endif %}
+
+        <!-- 权限说明 -->
+        <div
+            style="background: #e8f4fd; color: #004085; padding: 15px; border-radius: 6px; border-left: 4px solid #007bff; margin-top: 20px;">
+            <div style="font-weight: 600; margin-bottom: 5px; display: flex; align-items: center; gap: 8px;">
+                <span>📊</span> 权限系统说明
+            </div>
+            <div style="font-size: 13px; line-height: 1.5;">
+                <p><strong>权限位系统：</strong>每个模块的权限使用5位二进制表示</p>
+                <div style="display: flex; gap: 15px; margin: 10px 0; flex-wrap: wrap;">
+                    <div style="background: #f8f9fa; padding: 8px; border-radius: 4px;">
+                        <strong>R (1)</strong> - 查看权限
+                    </div>
+                    <div style="background: #f8f9fa; padding: 8px; border-radius: 4px;">
+                        <strong>C (2)</strong> - 创建权限
+                    </div>
+                    <div style="background: #f8f9fa; padding: 8px; border-radius: 4px;">
+                        <strong>U (4)</strong> - 更新权限
+                    </div>
+                    <div style="background: #f8f9fa; padding: 8px; border-radius: 4px;">
+                        <strong>D (8)</strong> - 删除权限
+                    </div>
+                    <div style="background: #f8f9fa; padding: 8px; border-radius: 4px;">
+                        <strong>A (16)</strong> - 高级权限
+                    </div>
+                </div>
+                <p><strong>常见权限值：</strong></p>
+                <div style="font-size: 12px; background: #f1f3f5; padding: 10px; border-radius: 4px; margin-top: 5px;">
+                    <p>• <strong>31</strong> = 所有权限 (1+2+4+8+16)</p>
+                    <p>• <strong>15</strong> = 基本操作权限 (1+2+4+8)</p>
+                    <p>• <strong>7</strong> = 读/创建/更新权限 (1+2+4)</p>
+                    <p>• <strong>3</strong> = 读/创建权限 (1+2)</p>
+                    <p>• <strong>1</strong> = 只读权限 (1)</p>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
+        // 从Jinja2模板变量传递给JavaScript
+        // 注意：这里我们只传递当前用户有权限的模块
+        // 创建一个只包含当前用户有权限的模块的数组
+        const moduleKeys = [];
+        {% for module, module_name in modules.items() %}
+            {% if user.id != current_user.id %}
+                {% set current_user_perms = current_user.get_all_permissions() %}
+                {% set current_user_module_perms = current_user_perms[module] %}
+                {% if current_user_module_perms.value > 0 %}
+                    moduleKeys.push('{{ module }}');
+                {% endif %}
+            {% else %}
+                moduleKeys.push('{{ module }}');
+            {% endif %}
+        {% endfor %}
+        
+        // 更新权限值函数
+        function updatePermissionValue(module) {
+            const checkboxes = [
+                document.getElementById(`${module}_read_checkbox`),
+                document.getElementById(`${module}_create_checkbox`),
+                document.getElementById(`${module}_update_checkbox`),
+                document.getElementById(`${module}_delete_checkbox`),
+                document.getElementById(`${module}_advanced_checkbox`)
+            ];
+            
+            const hiddenInputs = [
+                document.getElementById(`${module}_read_hidden`),
+                document.getElementById(`${module}_create_hidden`),
+                document.getElementById(`${module}_update_hidden`),
+                document.getElementById(`${module}_delete_hidden`),
+                document.getElementById(`${module}_advanced_hidden`)
+            ];
+            
+            let value = 0;
+            const values = [1, 2, 4, 8, 16];
+            
+            // 处理有复选框的情况
+            checkboxes.forEach((checkbox, index) => {
+                if (checkbox && checkbox.checked) {
+                    value += values[index];
+                    // 更新隐藏字段的值
+                    if (hiddenInputs[index]) {
+                        hiddenInputs[index].value = '1';
+                    }
+                } else if (hiddenInputs[index]) {
+                    // 未选中时，隐藏字段设置为0
+                    hiddenInputs[index].value = '0';
+                }
+            });
+            
+            // 处理只有隐藏字段没有复选框的情况（当前用户无权限的权限）
+            hiddenInputs.forEach((hiddenInput, index) => {
+                if (hiddenInput && !checkboxes[index] && hiddenInput.value === '1') {
+                    value += values[index];
+                }
+            });
+            
+            // 更新显示
+            const valueElement = document.getElementById(`${module}-value`);
+            if (valueElement) {
+                valueElement.textContent = `权限值: ${value}`;
+            }
+            
+            // 更新权限位显示
+            const bitBoxes = document.querySelectorAll(`#${module}-permissions .bit-box`);
+            if (bitBoxes.length === 5) {
+                // 对于每个权限位，检查是否有复选框或隐藏字段
+                for (let i = 0; i < 5; i++) {
+                    let isChecked = false;
+                    
+                    if (checkboxes[i]) {
+                        // 有复选框，使用复选框状态
+                        isChecked = checkboxes[i].checked;
+                    } else if (hiddenInputs[i]) {
+                        // 没有复选框，使用隐藏字段的值
+                        isChecked = hiddenInputs[i].value === '1';
+                    }
+                    
+                    bitBoxes[i].className = `bit-box ${isChecked ? 'bit-1' : 'bit-0'}`;
+                }
+            }
+            
+            return value;
+        }
+
+        // 页面加载时初始化所有权限值
+        document.addEventListener('DOMContentLoaded', function() {
+            // 确保 modules 变量被正确定义
+            if (typeof moduleKeys !== 'undefined' && moduleKeys.length > 0) {
+                moduleKeys.forEach(module => {
+                    // 为每个复选框添加事件监听器
+                    ['read', 'create', 'update', 'delete', 'advanced'].forEach(perm => {
+                        const checkbox = document.getElementById(`${module}_${perm}_checkbox`);
+                        if (checkbox) {
+                            checkbox.addEventListener('change', () => {
+                                updatePermissionValue(module);
+                            });
+                        }
+                    });
+                    
+                    // 初始计算一次
+                    updatePermissionValue(module);
+                });
+            }
+            
+            // 初始处理用户级别
+            if (typeof togglePermissionSection === 'function') {
+                togglePermissionSection();
+            }
+        });
+
+        // 用户级别变化时显示/隐藏权限设置
+        function togglePermissionSection() {
+            const userLevelSelect = document.getElementById('user_level');
+            if (!userLevelSelect) return;
+            
+            const selectedLevel = parseInt(userLevelSelect.value);
+            const permissionSection = document.getElementById('permission-section');
+            
+            if (permissionSection && selectedLevel === 3) { // 超级管理员
+                permissionSection.style.display = 'none';
+                // 自动计算所有权限值为31
+                if (moduleKeys && moduleKeys.length > 0) {
+                    moduleKeys.forEach(module => {
+                        ['read', 'create', 'update', 'delete', 'advanced'].forEach(perm => {
+                            const checkbox = document.getElementById(`${module}_${perm}_checkbox`);
+                            const hiddenInput = document.getElementById(`${module}_${perm}_hidden`);
+                            
+                            if (checkbox) {
+                                checkbox.checked = true;
+                            }
+                            if (hiddenInput) {
+                                hiddenInput.value = '1';
+                            }
+                        });
+                        
+                        updatePermissionValue(module);
+                    });
+                }
+            } else if (permissionSection) {
+                permissionSection.style.display = 'block';
+            }
+        }
+
         // 密码强度检查
         const passwordInput = document.getElementById('password-input');
         const passwordStrength = document.getElementById('password-strength');
         const strengthFill = document.getElementById('strength-fill');
         const strengthText = document.getElementById('strength-text');
         const userLevelSelect = document.getElementById('user_level');
-        const permissionSection = document.getElementById('permission-section');
 
-        // 如果userLevelSelect存在（编辑其他用户时），监听变化
+        // 为所有权限复选框添加事件监听器
+        if (moduleKeys && moduleKeys.length > 0) {
+            moduleKeys.forEach(module => {
+                ['read', 'create', 'update', 'delete', 'advanced'].forEach(perm => {
+                    const checkbox = document.getElementById(`${module}_${perm}_checkbox`);
+                    if (checkbox) {
+                        checkbox.addEventListener('change', () => {
+                            updatePermissionValue(module);
+                        });
+                    }
+                });
+            });
+        }
+
+        // 用户级别变化监听
         if (userLevelSelect) {
-            // 用户级别变化时显示/隐藏权限设置
-            function togglePermissionSection() {
-                const selectedLevel = parseInt(userLevelSelect.value);
-                if (selectedLevel === 3) { // 超级管理员
-                    permissionSection.style.display = 'none';
-                    // 自动勾选所有权限
-                    document.querySelectorAll('#permission-section input[type="checkbox"]').forEach(checkbox => {
-                        checkbox.checked = true;
-                        checkbox.disabled = true;
-                    });
-                } else {
-                    permissionSection.style.display = 'block';
-                    // 启用所有复选框
-                    document.querySelectorAll('#permission-section input[type="checkbox"]').forEach(checkbox => {
-                        checkbox.disabled = false;
-                    });
-                }
-            }
-
             userLevelSelect.addEventListener('change', togglePermissionSection);
         }
 
-        passwordInput.addEventListener('input', function () {
-            const password = this.value;
+        if (passwordInput) {
+            passwordInput.addEventListener('input', function () {
+                const password = this.value;
 
-            if (password.length === 0) {
-                passwordStrength.style.display = 'none';
-                return;
-            }
+                if (password.length === 0) {
+                    if (passwordStrength) passwordStrength.style.display = 'none';
+                    return;
+                }
 
-            passwordStrength.style.display = 'block';
+                if (passwordStrength) passwordStrength.style.display = 'block';
 
-            // 计算密码强度
-            let strength = 0;
+                // 计算密码强度
+                let strength = 0;
 
-            // 长度检查
-            if (password.length >= 8) strength += 1;
-            if (password.length >= 12) strength += 1;
+                // 长度检查
+                if (password.length >= 8) strength += 1;
+                if (password.length >= 12) strength += 1;
 
-            // 复杂性检查
-            if (/[a-z]/.test(password)) strength += 1;
-            if (/[A-Z]/.test(password)) strength += 1;
-            if (/[0-9]/.test(password)) strength += 1;
-            if (/[^a-zA-Z0-9]/.test(password)) strength += 1;
+                // 复杂性检查
+                if (/[a-z]/.test(password)) strength += 1;
+                if (/[A-Z]/.test(password)) strength += 1;
+                if (/[0-9]/.test(password)) strength += 1;
+                if (/[^a-zA-Z0-9]/.test(password)) strength += 1;
 
-            // 更新UI
-            let percentage = 0;
-            let text = '';
-            let color = '';
+                // 更新UI
+                let percentage = 0;
+                let text = '';
+                let color = '';
 
-            if (strength <= 2) {
-                percentage = 33;
-                text = '弱';
-                color = '#dc3545';
-            } else if (strength <= 4) {
-                percentage = 66;
-                text = '中';
-                color = '#ffc107';
-            } else {
-                percentage = 100;
-                text = '强';
-                color = '#28a745';
-            }
+                if (strength <= 2) {
+                    percentage = 33;
+                    text = '弱';
+                    color = '#dc3545';
+                } else if (strength <= 4) {
+                    percentage = 66;
+                    text = '中';
+                    color = '#ffc107';
+                } else {
+                    percentage = 100;
+                    text = '强';
+                    color = '#28a745';
+                }
 
-            strengthFill.style.width = percentage + '%';
-            strengthFill.style.background = color;
-            strengthText.textContent = text;
-            strengthText.style.color = color;
-        });
+                if (strengthFill) {
+                    strengthFill.style.width = percentage + '%';
+                    strengthFill.style.background = color;
+                }
+                if (strengthText) {
+                    strengthText.textContent = text;
+                    strengthText.style.color = color;
+                }
+            });
+        }
 
         // 删除用户确认
         function confirmDeleteUser() {
@@ -934,35 +1211,93 @@
         }
 
         // 表单提交验证
-        document.querySelector('form').addEventListener('submit', function (e) {
-            const usernameInput = document.getElementById('username-input');
-            const passwordInput = document.getElementById('password-input');
+        const editUserForm = document.getElementById('edit-user-form');
+        if (editUserForm) {
+            editUserForm.addEventListener('submit', function (e) {
+                const usernameInput = document.getElementById('username-input');
+                const passwordInput = document.getElementById('password-input');
 
-            // 用户名验证
-            if (usernameInput.value.trim().length < 3) {
-                e.preventDefault();
-                alert('用户名至少需要3个字符');
-                usernameInput.focus();
-                return false;
-            }
+                // 用户名验证
+                if (usernameInput && usernameInput.value.trim().length < 3) {
+                    e.preventDefault();
+                    alert('用户名至少需要3个字符');
+                    usernameInput.focus();
+                    return false;
+                }
 
-            // 密码验证（如果填写了密码）
-            if (passwordInput.value.length > 0 && passwordInput.value.length < 6) {
-                e.preventDefault();
-                alert('密码长度至少需要6个字符');
-                passwordInput.focus();
-                return false;
-            }
+                // 密码验证（如果填写了密码）
+                if (passwordInput && passwordInput.value.length > 0 && passwordInput.value.length < 6) {
+                    e.preventDefault();
+                    alert('密码长度至少需要6个字符');
+                    passwordInput.focus();
+                    return false;
+                }
 
-            // 最终确认
-            if (!confirm('确定要保存修改吗？')) {
-                e.preventDefault();
-                return false;
-            }
-        });
+                // 如果是编辑其他用户且不是超级管理员，显示权限摘要
+                {% if user.id != current_user.id and user.user_level != 3 %}
+                const userLevelSelect = document.getElementById('user_level');
+                if (userLevelSelect) {
+                    const selectedLevel = parseInt(userLevelSelect.value);
+                    
+                    if (selectedLevel === 3) {
+                        if (!confirm('确定要将用户设为超级管理员吗？\n\n超级管理员拥有系统所有权限，可以创建任何级别的用户，请谨慎分配。')) {
+                            e.preventDefault();
+                            return false;
+                        }
+                    } else if (selectedLevel === 2) {
+                        if (!confirm('确定要将用户设为管理员吗？\n\n管理员拥有所有权限，可以创建子管理员，请谨慎分配。')) {
+                            e.preventDefault();
+                            return false;
+                        }
+                    } else if (selectedLevel === 1) {
+                        if (!confirm('确定要将用户设为子管理员吗？\n\n子管理员只能授予自己拥有的权限给普通用户，不能创建其他管理员。')) {
+                            e.preventDefault();
+                            return false;
+                        }
+                    }
+                    
+                    // 显示权限摘要
+                    let permissionSummary = '';
+                    if (moduleKeys && moduleKeys.length > 0) {
+                        moduleKeys.forEach(module => {
+                            const value = updatePermissionValue(module);
+                            if (value > 0) {
+                                const moduleNameElement = document.querySelector(`#${module}-permissions h4`);
+                                const moduleName = moduleNameElement ? moduleNameElement.textContent.split(' ')[0] : module;
+                                permissionSummary += `• ${moduleName}: 权限值 ${value}\n`;
+                            }
+                        });
+                        
+                        if (permissionSummary) {
+                            permissionSummary = '\n\n分配的权限：\n' + permissionSummary;
+                        }
+                    }
+                }
+                {% endif %}
 
-        // 页面加载时聚焦到密码输入框（如果是编辑自己）或用户名输入框（如果是编辑其他用户）
+                // 最终确认
+                if (!confirm('确定要保存修改吗？')) {
+                    e.preventDefault();
+                    return false;
+                }
+            });
+        }
+
+        // 页面加载时初始化权限值计算
         document.addEventListener('DOMContentLoaded', function () {
+            // 计算所有模块的权限值
+            if (moduleKeys && moduleKeys.length > 0) {
+                moduleKeys.forEach(module => {
+                    updatePermissionValue(module);
+                });
+            }
+            
+            // 初始处理用户级别
+            if (typeof togglePermissionSection === 'function') {
+                togglePermissionSection();
+            }
+            
+            // 页面加载时聚焦到合适的输入框
             {% if user.id == current_user.id %}
             // 编辑自己时，聚焦到密码输入框
             const passwordInput = document.getElementById('password-input');
@@ -994,6 +1329,33 @@
                 }, 3000);
             });
         });
+
+        // 添加CSS动画
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from {
+                    opacity: 0;
+                    transform: translateY(-10px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+            
+            @keyframes slideOut {
+                from {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+                to {
+                    opacity: 0;
+                    transform: translateY(-10px);
+                }
+            }
+        `;
+        document.head.appendChild(style);
     </script>
 </body>
 

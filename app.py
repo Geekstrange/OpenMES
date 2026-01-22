@@ -95,12 +95,15 @@ class User(UserMixin, db.Model):
     # 用户级别：0-普通用户，1-子管理员，2-管理员，3-超级管理员
     user_level = db.Column(db.Integer, default=0)
     
-    # 具体权限字段
-    can_add_record = db.Column(db.Boolean, default=False)      # 添加记录
-    can_manage_process = db.Column(db.Boolean, default=False)  # 工序管理
-    can_manage_operator = db.Column(db.Boolean, default=False) # 操作员管理
-    can_manage_users = db.Column(db.Boolean, default=False)    # 用户管理
-    can_manage_system = db.Column(db.Boolean, default=False)   # 系统管理
+    # 权限使用 JSONB 列存储，格式示例：
+    # {
+    #     "production_management": 31,    # 11111 (所有权限)
+    #     "process_management": 7,        # 00111 (读、创建、更新)
+    #     "operator_management": 15,      # 01111 (读、创建、更新、删除)
+    #     "user_management": 3,          # 00011 (读、创建)
+    #     "system_management": 1         # 00001 (只读)
+    # }
+    permissions = db.Column(db.JSON, default={})
     
     # 权限追踪
     granted_by = db.Column(db.Integer, db.ForeignKey('production_users.id'), nullable=True)
@@ -112,10 +115,10 @@ class User(UserMixin, db.Model):
     
     # 常量定义
     USER_LEVELS = {
-        0: 'user',        # 普通用户
-        1: 'sub_admin',   # 子管理员
-        2: 'main_admin',  # 管理员
-        3: 'superuser'    # 超级管理员
+        0: 'user',
+        1: 'sub_admin',
+        2: 'main_admin',
+        3: 'superuser'
     }
     
     LEVEL_NAMES_ZH = {
@@ -125,7 +128,25 @@ class User(UserMixin, db.Model):
         3: '超级管理员'
     }
     
-    # 属性（用于向后兼容和便捷访问）
+    # 权限位定义（5位二进制）
+    PERM_READ = 1      # 00001 (1)
+    PERM_CREATE = 2    # 00010 (2)
+    PERM_UPDATE = 4    # 00100 (4)
+    PERM_DELETE = 8    # 01000 (8)
+    PERM_ADVANCED = 16 # 10000 (16)
+    
+    # 所有权限（31 = 11111）
+    PERM_ALL = PERM_READ | PERM_CREATE | PERM_UPDATE | PERM_DELETE | PERM_ADVANCED
+    
+    # 模块定义
+    MODULES = {
+        'production_management': '生产管理',
+        'process_management': '工序管理',
+        'operator_management': '操作员管理',
+        'user_management': '用户管理',
+        'system_management': '系统管理'
+    }
+    
     @property
     def is_admin(self):
         """任何类型的管理员都返回True"""
@@ -147,50 +168,9 @@ class User(UserMixin, db.Model):
         return self.user_level == 1
     
     @property
-    def admin_level(self):
-        """获取管理员级别字符串"""
-        return self.USER_LEVELS.get(self.user_level, 'user')
-    
-    @property
     def admin_level_display(self):
         """获取显示用的管理员级别"""
         return self.LEVEL_NAMES_ZH.get(self.user_level, '普通用户')
-    
-    @property
-    def admin_level_num(self):
-        """获取管理员级别数值，用于权限比较"""
-        return self.user_level
-    
-    @property
-    def permissions(self):
-        """获取用户的所有权限"""
-        perms = {}
-        
-        # 超级管理员拥有所有权限
-        if self.user_level == 3:
-            perms = {
-                'add_record': True,
-                'manage_process': True,
-                'manage_operator': True,
-                'manage_users': True,
-                'manage_system': True,
-            }
-        else:
-            perms = {
-                'add_record': self.can_add_record,
-                'manage_process': self.can_manage_process,
-                'manage_operator': self.can_manage_operator,
-                'manage_users': self.can_manage_users,
-                'manage_system': self.can_manage_system,
-            }
-        
-        return perms
-    
-    def has_permission(self, permission):
-        """检查用户是否有特定权限"""
-        if self.user_level == 3:
-            return True
-        return self.permissions.get(permission, False)
     
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -198,18 +178,122 @@ class User(UserMixin, db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
     
-    def can_grant_permission(self, permission):
-        """检查用户是否可以授予特定权限"""
-        # 用户只能授予自己拥有的权限
+    def has_permission(self, module, perm_bit='read'):
+        """
+        检查用户是否有特定权限
+        
+        Args:
+            module: 模块名称
+            perm_bit: 权限位 ('read', 'create', 'update', 'delete', 'advanced')
+        
+        Returns:
+            bool: 是否有权限
+        """
+        # 超级管理员拥有所有权限
         if self.user_level == 3:
-            return True  # 超级管理员可以授予所有权限
-        elif self.user_level == 2:
-            return self.has_permission(permission)
-        elif self.user_level == 1:
-            # 子管理员只能授予自己拥有的权限，且不能授予管理权限
-            return self.has_permission(permission) and permission != 'manage_users'
-        else:
+            return True
+        
+        # 获取模块权限值
+        module_perms = self.permissions.get(module, 0)
+        
+        # 如果未指定具体权限位，检查是否有任何权限
+        if perm_bit is None:
+            return module_perms > 0
+        
+        # 检查具体权限位
+        if perm_bit == 'read':
+            return bool(module_perms & self.PERM_READ)
+        elif perm_bit == 'create':
+            return bool(module_perms & self.PERM_CREATE)
+        elif perm_bit == 'update':
+            return bool(module_perms & self.PERM_UPDATE)
+        elif perm_bit == 'delete':
+            return bool(module_perms & self.PERM_DELETE)
+        elif perm_bit == 'advanced':
+            return bool(module_perms & self.PERM_ADVANCED)
+        
+        return False
+    
+    def set_module_permission(self, module, **kwargs):
+        """
+        设置模块的权限
+        
+        Args:
+            module: 模块名称
+            **kwargs: read, create, update, delete, advanced 布尔值
+        
+        Returns:
+            int: 权限值
+        """
+        perms = 0
+        if kwargs.get('read', False):
+            perms |= self.PERM_READ
+        if kwargs.get('create', False):
+            perms |= self.PERM_CREATE
+        if kwargs.get('update', False):
+            perms |= self.PERM_UPDATE
+        if kwargs.get('delete', False):
+            perms |= self.PERM_DELETE
+        if kwargs.get('advanced', False):
+            perms |= self.PERM_ADVANCED
+        
+        # 初始化权限字典
+        if not self.permissions:
+            self.permissions = {}
+        
+        self.permissions[module] = perms
+        return perms
+    
+    def get_module_permissions(self, module):
+        """
+        获取模块的详细权限
+        
+        Args:
+            module: 模块名称
+        
+        Returns:
+            dict: 包含各个权限位的布尔值和权限值
+        """
+        perms = self.permissions.get(module, 0)
+        return {
+            'read': bool(perms & self.PERM_READ),
+            'create': bool(perms & self.PERM_CREATE),
+            'update': bool(perms & self.PERM_UPDATE),
+            'delete': bool(perms & self.PERM_DELETE),
+            'advanced': bool(perms & self.PERM_ADVANCED),
+            'value': perms,
+            'octal': oct(perms).replace('0o', '')
+        }
+    
+    def get_all_permissions(self):
+        """获取所有模块的权限"""
+        result = {}
+        for module in self.MODULES.keys():
+            result[module] = self.get_module_permissions(module)
+        return result
+    
+    def get_permissions_value(self):
+        """获取所有权限的JSON值"""
+        if not self.permissions:
+            return {}
+        return self.permissions
+    
+    def can_edit_user(self, target_user):
+        """检查当前用户是否可以编辑目标用户"""
+        # 自己可以编辑自己
+        if self.id == target_user.id:
+            return True
+        
+        # 不能编辑超级管理员（除非自己也是超级管理员）
+        if target_user.user_level == 3 and self.user_level != 3:
             return False
+        
+        # 高权限可以编辑低权限
+        if self.user_level > target_user.user_level:
+            return True
+        
+        # 同级不能相互编辑
+        return False
     
     def can_grant_level(self, target_level):
         """检查当前用户是否可以授予目标用户级别"""
@@ -230,34 +314,13 @@ class User(UserMixin, db.Model):
         else:
             return False
     
-    def can_edit_user(self, target_user):
-        """检查当前用户是否可以编辑目标用户"""
-        # 自己可以编辑自己
-        if self.id == target_user.id:
-            return True
-        
-        # 不能编辑超级管理员（除非自己也是超级管理员）
-        if target_user.user_level == 3 and self.user_level != 3:
-            return False
-        
-        # 高权限可以编辑低权限
-        if self.user_level > target_user.user_level:
-            return True
-        
-        # 同级不能相互编辑
-        return False
-    
     def get_grantable_levels(self):
         """获取当前用户可以授予的用户级别"""
         grantable = []
-        for level, name in self.USER_LEVELS.items():
+        for level, name in self.LEVEL_NAMES_ZH.items():
             if self.can_grant_level(level):
-                grantable.append({'level': level, 'name': self.LEVEL_NAMES_ZH[level]})
+                grantable.append({'level': level, 'name': name})
         return grantable
-    
-    def get_all_levels(self):
-        """获取所有用户级别"""
-        return [{'level': level, 'name': self.LEVEL_NAMES_ZH[level]} for level in range(4)]
 
 class ProductionRecord(db.Model):
     __tablename__ = 'production_records'
@@ -335,7 +398,6 @@ class OperatorGroup(db.Model):
     def signature_url(self):
         """获取签名的URL"""
         if self.signature_file:
-            # 使用相对路径，避免_external=True导致的完整URL
             return url_for('serve_signature_file', filename=self.signature_file)
         return None
     
@@ -355,7 +417,52 @@ def inject_permissions():
     def has_perm(permission):
         if not current_user.is_authenticated:
             return False
-        return current_user.has_permission(permission)
+        
+        # 将旧权限名称映射到新模块
+        mapping = {
+            'add_record': ('production_management', 'create'),
+            'manage_process': ('process_management', 'read'),
+            'manage_operator': ('operator_management', 'read'),
+            'manage_users': ('user_management', 'read'),
+            'manage_system': ('system_management', 'read')
+        }
+        
+        if permission in mapping:
+            module, perm_bit = mapping[permission]
+            return current_user.has_permission(module, perm_bit)
+        
+        # 如果是模块名称，检查是否有该模块的读权限
+        if permission in User.MODULES:
+            return current_user.has_permission(permission, 'read')
+        
+        return False
+    
+    # 待前端模板迁移完毕全面转向新版权限管理
+    # def has_perm(permission):
+    #     if not current_user.is_authenticated:
+    #         return False
+        
+    #     # 将旧权限名称映射到新模块（删除这段）
+    #     # mapping = {
+    #     #     'add_record': ('production_management', 'create'),
+    #     #     'manage_process': ('process_management', 'read'),
+    #     #     'manage_operator': ('operator_management', 'read'),
+    #     #     'manage_users': ('user_management', 'read'),
+    #     #     'manage_system': ('system_management', 'read')
+    #     # }
+        
+    #     # 直接使用新权限系统检查
+    #     if '.' in permission:
+    #         # 格式: "module.perm_bit"
+    #         parts = permission.split('.')
+    #         if len(parts) == 2:
+    #             module, perm_bit = parts
+    #             return current_user.has_permission(module, perm_bit)
+    #     else:
+    #         # 如果是模块名称，检查是否有该模块的读权限
+    #         return current_user.has_permission(permission, 'read')
+        
+    #     return False
     
     def is_admin():
         if not current_user.is_authenticated:
@@ -367,9 +474,9 @@ def inject_permissions():
     
     def get_current_operator():
         if session.get('operator_logged_in'):
-            operator_id = session.get('operator_id')  # 先获取变量
+            operator_id = session.get('operator_id')
             if operator_id:
-                operator = db.session.get(OperatorGroup, int(operator_id))  # 使用变量
+                operator = db.session.get(OperatorGroup, int(operator_id))
                 if operator:
                     return {
                         'name': operator.operator_name,
@@ -388,9 +495,9 @@ def inject_permissions():
     # 为操作员提供导航
     def get_operator_nav():
         if session.get('operator_logged_in'):
-            operator_id = session.get('operator_id')  # 先获取变量
+            operator_id = session.get('operator_id')
             if operator_id:
-                operator = db.session.get(OperatorGroup, int(operator_id))  # 使用变量
+                operator = db.session.get(OperatorGroup, int(operator_id))
                 nav = [
                     {'name': '今日生产', 'url': url_for('operator_dashboard'), 'icon': '📊'},
                     {'name': '修改密码', 'url': '#', 'icon': '🔒', 'onclick': 'showChangePasswordModal()'}
@@ -409,7 +516,8 @@ def inject_permissions():
         'is_operator': is_operator,
         'current_operator': get_current_operator,
         'operator_nav': get_operator_nav,
-        'current_user': current_user
+        'current_user': current_user,
+        'User': User  # 将User类传递给模板，以便访问模块常量
     }
 
 def get_process_options():
@@ -424,8 +532,7 @@ def get_operator_groups():
     for item in groups:
         if item.group_name not in result:
             result[item.group_name] = []
-        # 只返回操作员名称字符串，而不是对象
-        result[item.group_name].append(item.operator_name)  # 改为直接返回字符串
+        result[item.group_name].append(item.operator_name)
     return result
 
 def get_process_groups(process_name):
@@ -482,16 +589,32 @@ def get_date_range(period):
         return today, today
 
 # -------------------------- 权限装饰器 --------------------------
-def permission_required(permission):
-    """权限检查装饰器"""
+def permission_required(module, perm_bit='read'):
+    """
+    权限检查装饰器
+    
+    Args:
+        module: 模块名称
+        perm_bit: 权限位 ('read', 'create', 'update', 'delete', 'advanced')
+    """
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
             if not current_user.is_authenticated:
                 return redirect(url_for('login'))
-            if not current_user.has_permission(permission):
-                flash(f'无权限访问！您需要"{permission}"权限', 'danger')
+            
+            if not current_user.has_permission(module, perm_bit):
+                module_names = User.MODULES
+                perm_names = {
+                    'read': '查看',
+                    'create': '新建',
+                    'update': '编辑',
+                    'delete': '删除',
+                    'advanced': '高级操作'
+                }
+                flash(f'无权限{perm_names.get(perm_bit, "")}{module_names.get(module, module)}！', 'danger')
                 return redirect(url_for('index'))
+            
             return f(*args, **kwargs)
         return decorated_function
     return decorator
@@ -535,9 +658,9 @@ def group_owner_required(f):
             flash('请先登录！', 'danger')
             return redirect(url_for('login'))
 
-        operator_id = session.get('operator_id')  # 先获取变量
+        operator_id = session.get('operator_id')
         if operator_id:
-            operator = db.session.get(OperatorGroup, int(operator_id))  # 使用变量
+            operator = db.session.get(OperatorGroup, int(operator_id))
             if not operator or not operator.group_owner:
                 flash('需要组管理员权限才能访问！', 'danger')
                 return redirect(url_for('operator_dashboard'))
@@ -624,6 +747,45 @@ def logout():
 @app.route('/')
 @login_required
 def index():
+    # 检查是否有生产管理读取权限
+    if not current_user.has_permission('production_management', 'read'):
+        flash('您没有访问生产记录的权限！', 'danger')
+        
+        # 获取今天日期
+        today = date.today()
+        
+        # 检查用户是否有任何其他权限
+        has_any_other_perm = any(
+            current_user.has_permission(m, 'read') 
+            for m in User.MODULES.keys() 
+            if m != 'production_management'
+        )
+        
+        return render_template('index.html',
+                             today=today,
+                             has_any_other_perm=has_any_other_perm,
+                             # 传递空数据，确保模板不报错
+                             records=[],
+                             total_today=0,
+                             process_count=0,
+                             operator_count=0,
+                             process_stats=[],
+                             process_list=[],
+                             process_labels=[],
+                             process_values=[],
+                             operator_labels=[],
+                             operator_values=[],
+                             frozen_count=0,
+                             search_code='',
+                             search_process='',
+                             search_operator='',
+                             search_creator='',
+                             search_next_process='',
+                             min_number='',
+                             max_number='',
+                             start_date='',
+                             end_date='')
+                             
     # 处理搜索条件
     search_code = request.args.get('search_code', '').strip()
     search_process = request.args.get('search_process', '').strip()
@@ -771,17 +933,13 @@ def index():
 # -------------------------- 添加记录 --------------------------
 @app.route('/add', methods=['GET', 'POST'])
 @login_required
+@permission_required('production_management', 'create')
 def add_record():
-    # 检查添加记录的权限
-    if not current_user.has_permission('add_record'):
-        flash('无权限添加生产记录！', 'danger')
-        return redirect(url_for('index'))
-
     # 从数据库获取数据
     process_options = get_process_options()
     operator_groups = get_operator_groups()
-    process_links = get_process_links()  # 获取工序关联的操作员组
-    process_next_links = get_process_next_links()  # 新增：获取工序关联的下工序
+    process_links = get_process_links()
+    process_next_links = get_process_next_links()
 
     if request.method == 'POST':
         product_code = request.form.get('product_code', '').strip()
@@ -820,7 +978,7 @@ def add_record():
             operators=operator_str,
             note=note if note else None,
             creator=current_user.username,
-            is_freeze=False  # 新增记录默认未冻结
+            is_freeze=False
         )
         db.session.add(new_record)
         try:
@@ -868,21 +1026,26 @@ def add_record():
 def edit_record(id):
     record = db.session.get(ProductionRecord, int(id))
     
+    # 首先检查记录是否存在
+    if not record:
+        flash('记录不存在！', 'danger')
+        return redirect(url_for('index'))
+    
     # 检查记录是否已冻结且用户权限不足
-    if record.is_freeze and current_user.user_level < 2:
+    if record.is_freeze and not current_user.has_permission('production_management', 'advanced'):
         flash('该记录已被确认，您无权限编辑！', 'danger')
         return redirect(url_for('index'))
 
-    # 检查添加记录的权限
-    if not current_user.has_permission('add_record'):
+    # 检查编辑权限
+    if not current_user.has_permission('production_management', 'update'):
         flash('无权限编辑生产记录！', 'danger')
         return redirect(url_for('index'))
 
     # 从数据库获取数据
     process_options = get_process_options()
     operator_groups = get_operator_groups()
-    process_links = get_process_links()  # 获取工序关联的操作员组
-    process_next_links = get_process_next_links()  # 新增：获取工序关联的下工序
+    process_links = get_process_links()
+    process_next_links = get_process_next_links()
 
     selected_operators = [op.strip() for op in record.operators.split(',') if op.strip()]
 
@@ -1027,13 +1190,18 @@ def process_model_stats():
 def delete_record(id):
     record = db.session.get(ProductionRecord, int(id))
     
+    # 首先检查记录是否存在
+    if not record:
+        flash('记录不存在！', 'danger')
+        return redirect(url_for('index'))
+    
     # 检查记录是否已冻结且用户权限不足
-    if record.is_freeze and current_user.user_level < 2:
+    if record.is_freeze and not current_user.has_permission('production_management', 'advanced'):
         flash('该记录已被确认冻结，您无权限删除！', 'danger')
         return redirect(url_for('index'))
 
-    # 检查添加记录的权限
-    if not current_user.has_permission('add_record'):
+    # 检查删除权限
+    if not current_user.has_permission('production_management', 'delete'):
         flash('无权限删除生产记录！', 'danger')
         return redirect(url_for('index'))
 
@@ -1115,7 +1283,7 @@ def today_stats():
 # -------------------------- 工序管理 --------------------------
 @app.route('/processes')
 @login_required
-@permission_required('manage_process')
+@permission_required('process_management', 'read')
 def process_list():
     """工序管理页面"""
     processes = ProcessOption.query.order_by(ProcessOption.process_name).all()
@@ -1129,7 +1297,7 @@ def process_list():
 
 @app.route('/process/add', methods=['GET', 'POST'])
 @login_required
-@permission_required('manage_process')
+@permission_required('process_management', 'create')
 def add_process():
     """添加工序"""
     if request.method == 'POST':
@@ -1160,7 +1328,7 @@ def add_process():
 
 @app.route('/process/delete/<int:id>')
 @login_required
-@permission_required('manage_process')
+@permission_required('process_management', 'delete')
 def delete_process(id):
     """删除工序"""
     process = db.session.get(ProcessOption, int(id))
@@ -1187,7 +1355,7 @@ def delete_process(id):
 # -------------------------- 工序关联管理API --------------------------
 @app.route('/api/process/<int:id>/linked_groups')
 @login_required
-@permission_required('manage_process')
+@permission_required('process_management', 'advanced')
 def get_linked_groups(id):
     """获取工序已关联的操作员组"""
     process = db.session.get(ProcessOption, int(id))
@@ -1206,7 +1374,7 @@ def get_linked_groups(id):
 
 @app.route('/process/<int:id>/link_groups', methods=['POST'])
 @login_required
-@permission_required('manage_process')
+@permission_required('process_management', 'advanced')
 def link_process_groups(id):
     """为工序关联操作员组"""
     process = db.session.get(ProcessOption, int(id))
@@ -1230,7 +1398,7 @@ def link_process_groups(id):
 # -------------------------- 工序关联下工序API --------------------------
 @app.route('/api/process/<int:id>/linked_next_processes')
 @login_required
-@permission_required('manage_process')
+@permission_required('process_management', 'advanced')
 def get_linked_next_processes(id):
     """获取工序已关联的下工序"""
     process = db.session.get(ProcessOption, int(id))
@@ -1256,7 +1424,7 @@ def get_linked_next_processes(id):
 
 @app.route('/process/<int:id>/link_next_processes', methods=['POST'])
 @login_required
-@permission_required('manage_process')
+@permission_required('process_management', 'advanced')
 def link_process_next(id):
     """为工序关联下工序"""
     process = db.session.get(ProcessOption, int(id))
@@ -1280,7 +1448,7 @@ def link_process_next(id):
 # -------------------------- 用户管理 --------------------------
 @app.route('/users')
 @login_required
-@permission_required('manage_users')
+@permission_required('user_management', 'read')
 def user_list():
     """用户管理页面 - 根据权限过滤显示的用户"""
     
@@ -1315,9 +1483,9 @@ def user_list():
 
 @app.route('/user/add', methods=['GET', 'POST'])
 @login_required
-@permission_required('manage_users')
+@permission_required('user_management', 'create')
 def add_user():
-    """添加用户 - 根据当前用户权限限制可分配的权限"""
+    """添加用户 - 使用新权限系统"""
     
     # 确定当前用户可以授予的用户级别
     grantable_levels = current_user.get_grantable_levels()
@@ -1326,28 +1494,6 @@ def add_user():
     if current_user.user_level == 0:
         flash('普通用户无法添加新用户！', 'danger')
         return redirect(url_for('user_list'))
-    
-    # 确定当前用户可以授予的权限
-    grantable_permissions = []
-    
-    if current_user.user_level == 3:
-        # 超级管理员可以授予所有权限
-        grantable_permissions = ['add_record', 'manage_process', 'manage_operator', 'manage_users', 'manage_system']
-    elif current_user.user_level == 2:
-        # 管理员可以授予自己拥有的权限
-        for perm in ['add_record', 'manage_process', 'manage_operator', 'manage_users', 'manage_system']:
-            if current_user.has_permission(perm):
-                grantable_permissions.append(perm)
-    elif current_user.user_level == 1:
-        # 子管理员可以授予自己拥有的权限给普通用户
-        for perm in ['add_record', 'manage_process', 'manage_operator', 'manage_users', 'manage_system']:
-            if current_user.has_permission(perm):
-                grantable_permissions.append(perm)
-    elif current_user.user_level == 0:
-        # 普通用户只能授予自己拥有的权限
-        for perm in ['add_record', 'manage_process', 'manage_operator', 'manage_users', 'manage_system']:
-            if current_user.has_permission(perm):
-                grantable_permissions.append(perm)
     
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
@@ -1361,46 +1507,92 @@ def add_user():
             flash('无权限设置该用户级别！', 'danger')
             return render_template('add_user.html',
                                  grantable_levels=grantable_levels,
-                                 grantable_permissions=grantable_permissions)
+                                 modules=User.MODULES)
         
-        # 获取具体权限
-        if user_level == 3:  # 超级管理员
-            can_add_record = True
-            can_manage_users = True
-            can_manage_process = True
-            can_manage_operator = True
-            can_manage_system = True
+        # 初始化权限字典
+        permissions = {}
+        
+        # 如果是超级管理员，自动拥有所有权限
+        if user_level == 3:
+            for module in User.MODULES.keys():
+                permissions[module] = User.PERM_ALL
         else:
-            can_add_record = request.form.get('can_add_record') == 'on' and 'add_record' in grantable_permissions
-            can_manage_users = request.form.get('can_manage_users') == 'on' and 'manage_users' in grantable_permissions
-            can_manage_process = request.form.get('can_manage_process') == 'on' and 'manage_process' in grantable_permissions
-            can_manage_operator = request.form.get('can_manage_operator') == 'on' and 'manage_operator' in grantable_permissions
-            can_manage_system = request.form.get('can_manage_system') == 'on' and 'manage_system' in grantable_permissions
+            # 为每个模块设置权限，并验证当前用户是否有权授予这些权限
+            for module in User.MODULES.keys():
+                perm_value = 0
+                
+                # 检查每个权限位
+                read_perm = request.form.get(f'{module}_read') == 'on'
+                create_perm = request.form.get(f'{module}_create') == 'on'
+                update_perm = request.form.get(f'{module}_update') == 'on'
+                delete_perm = request.form.get(f'{module}_delete') == 'on'
+                advanced_perm = request.form.get(f'{module}_advanced') == 'on'
+                
+                # 验证：当前用户只能授予自己拥有的权限
+                if read_perm and not current_user.has_permission(module, 'read'):
+                    flash(f'您没有"{User.MODULES[module]}"模块的"查看"权限，无法授予他人！', 'danger')
+                    return render_template('add_user.html',
+                                         grantable_levels=grantable_levels,
+                                         modules=User.MODULES)
+                
+                if create_perm and not current_user.has_permission(module, 'create'):
+                    flash(f'您没有"{User.MODULES[module]}"模块的"创建"权限，无法授予他人！', 'danger')
+                    return render_template('add_user.html',
+                                         grantable_levels=grantable_levels,
+                                         modules=User.MODULES)
+                
+                if update_perm and not current_user.has_permission(module, 'update'):
+                    flash(f'您没有"{User.MODULES[module]}"模块的"更新"权限，无法授予他人！', 'danger')
+                    return render_template('add_user.html',
+                                         grantable_levels=grantable_levels,
+                                         modules=User.MODULES)
+                
+                if delete_perm and not current_user.has_permission(module, 'delete'):
+                    flash(f'您没有"{User.MODULES[module]}"模块的"删除"权限，无法授予他人！', 'danger')
+                    return render_template('add_user.html',
+                                         grantable_levels=grantable_levels,
+                                         modules=User.MODULES)
+                
+                if advanced_perm and not current_user.has_permission(module, 'advanced'):
+                    flash(f'您没有"{User.MODULES[module]}"模块的"高级"权限，无法授予他人！', 'danger')
+                    return render_template('add_user.html',
+                                         grantable_levels=grantable_levels,
+                                         modules=User.MODULES)
+                
+                # 计算权限值
+                if read_perm:
+                    perm_value |= User.PERM_READ
+                if create_perm:
+                    perm_value |= User.PERM_CREATE
+                if update_perm:
+                    perm_value |= User.PERM_UPDATE
+                if delete_perm:
+                    perm_value |= User.PERM_DELETE
+                if advanced_perm:
+                    perm_value |= User.PERM_ADVANCED
+                
+                permissions[module] = perm_value
         
         # 验证数据
         if not username or not password:
             flash('用户名和密码不能为空！', 'danger')
             return render_template('add_user.html',
                                  grantable_levels=grantable_levels,
-                                 grantable_permissions=grantable_permissions)
+                                 modules=User.MODULES)
         
         # 检查用户名是否已存在
         if User.query.filter_by(username=username).first():
             flash('用户名已存在！', 'danger')
             return render_template('add_user.html',
                                  grantable_levels=grantable_levels,
-                                 grantable_permissions=grantable_permissions)
+                                 modules=User.MODULES)
         
         # 创建新用户
         new_user = User(
             username=username,
             user_level=user_level,
-            can_add_record=can_add_record,
-            can_manage_process=can_manage_process,
-            can_manage_operator=can_manage_operator,
-            can_manage_users=can_manage_users,
-            can_manage_system=can_manage_system,
-            granted_by=current_user.id  # 记录权限授予者
+            permissions=permissions,
+            granted_by=current_user.id
         )
         new_user.set_password(password)
         
@@ -1415,146 +1607,138 @@ def add_user():
     
     return render_template('add_user.html',
                          grantable_levels=grantable_levels,
-                         grantable_permissions=grantable_permissions)
+                         modules=User.MODULES)
 
-@app.route('/user/edit/<int:id>', methods=['GET', 'POST'])
+@app.route('/edit_user/<int:id>', methods=['GET', 'POST'])
 @login_required
-@permission_required('manage_users')
 def edit_user(id):
-    """编辑用户 - 根据当前用户权限限制可修改的内容"""
+    if not current_user.has_permission('user_management', 'update'):
+        flash('您没有权限编辑用户', 'danger')
+        return redirect(url_for('user_list'))
     
-    user = db.session.get(User, int(id))
+    user = User.query.get_or_404(id)
     
-    # 权限检查：高权限可以编辑低权限，同级不能相互编辑，但可以编辑自己
-    # 特别修改：普通用户可以编辑自己
-    if not current_user.can_edit_user(user) and not (current_user.user_level == 0 and current_user.id == user.id):
+    # 检查是否可编辑
+    if not current_user.can_edit_user(user):
         flash('无权限编辑该用户！', 'danger')
         return redirect(url_for('user_list'))
     
-    # 确定当前用户可以授予的用户级别
-    grantable_levels = current_user.get_grantable_levels()
-    
-    # 确定当前用户可以授予的权限
-    grantable_permissions = []
-    
-    if current_user.user_level == 3:
-        grantable_permissions = ['add_record', 'manage_process', 'manage_operator', 'manage_users', 'manage_system']
-    elif current_user.user_level == 2:
-        for perm in ['add_record', 'manage_process', 'manage_operator', 'manage_users', 'manage_system']:
-            if current_user.has_permission(perm):
-                grantable_permissions.append(perm)
-    elif current_user.user_level == 1:
-        for perm in ['add_record', 'manage_process', 'manage_operator', 'manage_users', 'manage_system']:
-            if current_user.has_permission(perm):
-                grantable_permissions.append(perm)
-    elif current_user.user_level == 0:
-        for perm in ['add_record', 'manage_process', 'manage_operator', 'manage_users', 'manage_system']:
-            if current_user.has_permission(perm):
-                grantable_permissions.append(perm)
-    
-    # 对于普通用户编辑自己，只能修改密码
-    if current_user.user_level == 0 and current_user.id == user.id:
-        grantable_levels = [{'level': 0, 'name': '普通用户'}]  # 普通用户不能修改用户级别
-        grantable_permissions = []  # 普通用户不能修改权限
-    
     if request.method == 'POST':
-        username = request.form.get('username', '').strip()
-        password = request.form.get('password', '').strip()
+        username = request.form.get('username')
+        password = request.form.get('password')
+        user_level = int(request.form.get('user_level', 0))
         
-        # 获取用户级别
-        user_level = int(request.form.get('user_level', user.user_level))
+        # 用户名不能重复（除非是自己）
+        if username != user.username:
+            existing_user = User.query.filter_by(username=username).first()
+            if existing_user:
+                flash('用户名已存在', 'danger')
+                return redirect(url_for('edit_user', id=id))
         
-        # 普通用户编辑自己时，不允许修改用户级别
-        if current_user.user_level == 0 and current_user.id == user.id:
-            user_level = user.user_level  # 保持原级别
+        # 更新基本信息
+        user.username = username
         
-        # 验证用户级别是否在可授予范围内
-        if user_level != user.user_level:  # 如果修改了用户级别
-            if not any(level['level'] == user_level for level in grantable_levels):
-                flash('无权限设置该用户级别！', 'danger')
-                return render_template('edit_user.html',
-                                     user=user,
-                                     grantable_levels=grantable_levels,
-                                     grantable_permissions=grantable_permissions)
-        
-        # 获取具体权限
-        if user_level == 3:  # 超级管理员
-            can_add_record = True
-            can_manage_process = True
-            can_manage_operator = True
-            can_manage_users = True
-            can_manage_system = True
-        else:
-            # 普通用户编辑自己时，不允许修改权限
-            if current_user.user_level == 0 and current_user.id == user.id:
-                can_add_record = user.can_add_record
-                can_manage_process = user.can_manage_process
-                can_manage_operator = user.can_manage_operator
-                can_manage_users = user.can_manage_users
-                can_manage_system = user.can_manage_system
-            else:
-                can_add_record = request.form.get('can_add_record') == 'on' and 'add_record' in grantable_permissions
-                can_manage_process = request.form.get('can_manage_process') == 'on' and 'manage_process' in grantable_permissions
-                can_manage_operator = request.form.get('can_manage_operator') == 'on' and 'manage_operator' in grantable_permissions
-                can_manage_users = request.form.get('can_manage_users') == 'on' and 'manage_users' in grantable_permissions
-            can_manage_system = request.form.get('can_manage_system') == 'on' and 'manage_system' in grantable_permissions
-        
-        # 验证数据
-        if not username:
-            flash('用户名不能为空！', 'danger')
-            return render_template('edit_user.html',
-                                 user=user,
-                                 grantable_levels=grantable_levels,
-                                 grantable_permissions=grantable_permissions)
-        
-        # 检查用户名是否重复
-        if User.query.filter(User.username == username, User.id != id).first():
-            flash('用户名已存在！', 'danger')
-            return render_template('edit_user.html',
-                                 user=user,
-                                 grantable_levels=grantable_levels,
-                                 grantable_permissions=grantable_permissions)
-        
-        # 更新用户信息
-        # 普通用户编辑自己时，不能修改用户名
-        if not (current_user.user_level == 0 and current_user.id == user.id):
-            user.username = username
-        
-        user.user_level = user_level
-        
-        # 普通用户编辑自己时，不能修改权限
-        if not (current_user.user_level == 0 and current_user.id == user.id):
-            user.can_add_record = can_add_record
-            user.can_manage_process = can_manage_process
-            user.can_manage_operator = can_manage_operator
-            user.can_manage_users = can_manage_users
-            user.can_manage_system = can_manage_system
-        
-        # 只有密码不为空时才更新
+        # 更新密码（如果提供了新密码）
         if password:
             user.set_password(password)
         
-        user.update_time = datetime.now()
+        # 更新用户级别
+        user.user_level = user_level
+        
+        # 超级管理员特殊处理
+        if user_level == 3:
+            # 超级管理员拥有所有权限
+            permissions = {}
+            for module in User.MODULES.keys():
+                permissions[module] = User.PERM_ALL
+            user.permissions = permissions
+        else:
+            # 获取用户当前的权限，用于设置默认值
+            user_current_perms = user.get_all_permissions() if user.permissions else {}
+            permissions = {}
+            
+            # 为每个模块设置权限，并验证当前用户是否有权授予这些权限
+            for module in User.MODULES.keys():
+                perm_value = 0
+                
+                # 检查每个权限位
+                read_perm = request.form.get(f'{module}_read') == '1'
+                create_perm = request.form.get(f'{module}_create') == '1'
+                update_perm = request.form.get(f'{module}_update') == '1'
+                delete_perm = request.form.get(f'{module}_delete') == '1'
+                advanced_perm = request.form.get(f'{module}_advanced') == '1'
+                
+                # 验证：当前用户只能授予自己拥有的权限
+                # 注意：这里我们只检查当前用户是否有权限授予，如果没有，则保持用户原有权限
+                if read_perm and not current_user.has_permission(module, 'read'):
+                    # 当前用户没有读权限，但表单却提交了读权限，这可能是个错误
+                    # 保持用户原有的读权限
+                    if module in user_current_perms:
+                        read_perm = user_current_perms[module]['read']
+                    else:
+                        read_perm = False
+                
+                if create_perm and not current_user.has_permission(module, 'create'):
+                    if module in user_current_perms:
+                        create_perm = user_current_perms[module]['create']
+                    else:
+                        create_perm = False
+                
+                if update_perm and not current_user.has_permission(module, 'update'):
+                    if module in user_current_perms:
+                        update_perm = user_current_perms[module]['update']
+                    else:
+                        update_perm = False
+                
+                if delete_perm and not current_user.has_permission(module, 'delete'):
+                    if module in user_current_perms:
+                        delete_perm = user_current_perms[module]['delete']
+                    else:
+                        delete_perm = False
+                
+                if advanced_perm and not current_user.has_permission(module, 'advanced'):
+                    if module in user_current_perms:
+                        advanced_perm = user_current_perms[module]['advanced']
+                    else:
+                        advanced_perm = False
+                
+                # 计算权限值
+                if read_perm:
+                    perm_value |= User.PERM_READ
+                if create_perm:
+                    perm_value |= User.PERM_CREATE
+                if update_perm:
+                    perm_value |= User.PERM_UPDATE
+                if delete_perm:
+                    perm_value |= User.PERM_DELETE
+                if advanced_perm:
+                    perm_value |= User.PERM_ADVANCED
+                
+                permissions[module] = perm_value
+            
+            user.permissions = permissions
+        
+        # 设置授予者
+        user.granted_by = current_user.id
+        user.update_time = datetime.utcnow()
         
         try:
             db.session.commit()
-            if current_user.user_level == 0 and current_user.id == user.id:
-                flash('密码修改成功！', 'success')
-            else:
-                flash(f'用户 [{username}] 编辑成功！', 'success')
+            flash(f'用户 {username} 已更新', 'success')
             return redirect(url_for('user_list'))
         except Exception as e:
             db.session.rollback()
-            flash(f'编辑失败：{str(e)}', 'danger')
+            flash(f'更新失败: {str(e)}', 'danger')
     
-    return render_template('edit_user.html',
-                         user=user,
-                         grantable_levels=grantable_levels,
-                         grantable_permissions=grantable_permissions)
+    # GET请求时，显示编辑表单
+    return render_template('edit_user.html', 
+                         user=user, 
+                         modules=User.MODULES,
+                         grantable_levels=current_user.get_grantable_levels())
 
 @app.route('/user/delete/<int:id>')
 @login_required
-@permission_required('manage_users')
+@permission_required('user_management', 'delete')
 def delete_user(id):
     """删除用户 - 权限检查"""
     
@@ -1583,7 +1767,7 @@ def delete_user(id):
 # -------------------------- 操作员组管理 --------------------------
 @app.route('/operators')
 @login_required
-@permission_required('manage_operator')
+@permission_required('operator_management', 'read')
 def operator_list():
     """操作员管理页面"""
     # 按组名分组显示
@@ -1604,11 +1788,11 @@ def operator_list():
     return render_template('operator_list.html',
                          groups=groups,
                          operators=operators,
-                         today=today)  # 添加 today 变量
+                         today=today)
 
 @app.route('/operator/add', methods=['GET', 'POST'])
 @login_required
-@permission_required('manage_operator')
+@permission_required('operator_management', 'create')
 def add_operator():
     """添加操作员"""
     # 获取现有的组名（去重）
@@ -1697,7 +1881,7 @@ def add_operator():
 
 @app.route('/operator/delete/<int:id>')
 @login_required
-@permission_required('manage_operator')
+@permission_required('operator_management', 'delete')
 def delete_operator(id):
     """删除操作员"""
     operator = db.session.get(OperatorGroup, int(id))
@@ -1725,7 +1909,7 @@ def delete_operator(id):
 
 @app.route('/operator/delete_group/<group_name>')
 @login_required
-@permission_required('manage_operator')
+@permission_required('operator_management', 'delete')
 def delete_operator_group(group_name):
     """删除操作员组"""
     group_operators = OperatorGroup.query.filter_by(group_name=group_name).all()
@@ -1759,14 +1943,14 @@ def delete_operator_group(group_name):
 # --------------------------- 系统管理 ---------------------------
 @app.route('/system')
 @login_required
-@permission_required('manage_system')
+@permission_required('system_management', 'read')
 def system_management():
     return render_template('system.html')
 
 # -------------------------- 数据库备份功能 --------------------------
 @app.route('/system/backup', methods=['POST'])
 @login_required
-@permission_required('manage_system')
+@permission_required('system_management', 'advanced')
 def backup_database():
     """创建数据库备份"""
     try:
@@ -1790,7 +1974,6 @@ def backup_database():
         filepath = os.path.join(BACKUP_STORAGE_PATH, filename)
         
         # 使用 pg_dump 备份数据库
-        # 注意：需要确保服务器已安装 PostgreSQL 客户端工具
         cmd = [
             'pg_dump',
             '-h', DB_HOST,
@@ -1844,7 +2027,7 @@ def backup_database():
 
 @app.route('/system/backup/list')
 @login_required
-@permission_required('manage_system')
+@permission_required('system_management', 'read')
 def list_backups():
     """列出所有备份文件"""
     try:
@@ -1876,7 +2059,7 @@ def list_backups():
 
 @app.route('/system/backup/download/<filename>')
 @login_required
-@permission_required('manage_system')
+@permission_required('system_management', 'read')
 def download_backup(filename):
     """下载备份文件"""
     try:
@@ -1893,7 +2076,7 @@ def download_backup(filename):
 
 @app.route('/system/backup/delete/<filename>', methods=['DELETE'])
 @login_required
-@permission_required('manage_system')
+@permission_required('system_management', 'advanced')
 def delete_backup(filename):
     """删除备份文件"""
     try:
@@ -1920,7 +2103,7 @@ def delete_backup(filename):
 
 @app.route('/system/stats')
 @login_required
-@permission_required('manage_system')
+@permission_required('system_management', 'read')
 def system_stats():
     """获取系统统计信息"""
     try:
@@ -2045,7 +2228,7 @@ def operator_dashboard():
             process_stats[record.process] += record.number
         
         # 如果是组管理员，获取组内统计信息
-        group_total = total_today  # 组内总产量就是today_records的总和
+        group_total = total_today
         
         # 获取今天已签字的组员（只统计组管理员）
         signed_members = []
@@ -2078,9 +2261,9 @@ def operator_dashboard():
                     'group_owner': member.group_owner,
                     'signature_file': member.signature_file,
                     'signature_time': member.signature_time,
-                    'is_signed_today': is_signed_today,  # 新增：今天是否已签字
+                    'is_signed_today': is_signed_today,
                     'signature_time_display': signature_time_display,
-                    'is_signed': bool(member.signature_file)  # 保留历史记录
+                    'is_signed': bool(member.signature_file)
                 })
             else:
                 # 普通操作员不显示签字状态
@@ -2097,7 +2280,6 @@ def operator_dashboard():
     
     else:
         # 普通操作员：只获取自己的记录
-        # 先查询所有今日记录，然后过滤出包含该操作员的记录
         all_today_records = ProductionRecord.query.filter(
             ProductionRecord.create_time >= start_of_day,
             ProductionRecord.create_time <= end_of_day
@@ -2180,7 +2362,7 @@ def operator_change_password():
 # -------------------------- 操作员重置密码API --------------------------
 @app.route('/operator/<int:id>/reset_password', methods=['POST'])
 @login_required
-@permission_required('manage_operator')
+@permission_required('operator_management', 'update')
 def reset_operator_password(id):
     """重置操作员密码（AJAX版本）"""
     operator = db.session.get(OperatorGroup, int(id))
@@ -2201,12 +2383,9 @@ def reset_operator_password(id):
 # -------------------------- 组管理员功能 --------------------------
 @app.route('/operator/<int:id>/grant_owner', methods=['POST'])
 @login_required
+@permission_required('operator_management', 'advanced')
 def grant_group_owner(id):
     """授权操作员为组管理员"""
-    # 检查用户权限：user_level >= 2
-    if current_user.user_level < 2:
-        return jsonify({'success': False, 'message': '需要管理员以上权限！'})
-    
     password = request.form.get('password', '').strip()
     
     # 验证管理员密码
@@ -2236,12 +2415,9 @@ def grant_group_owner(id):
 
 @app.route('/operator/<int:id>/revoke_owner', methods=['POST'])
 @login_required
+@permission_required('operator_management', 'advanced')
 def revoke_group_owner(id):
     """移除组管理员权限"""
-    # 检查用户权限：user_level >= 2
-    if current_user.user_level < 2:
-        return jsonify({'success': False, 'message': '需要管理员以上权限！'})
-    
     password = request.form.get('password', '').strip()
     
     # 验证管理员密码
@@ -2364,6 +2540,7 @@ def get_operator_signature(id):
     """获取操作员签名（组内成员可查看）"""
     # 检查权限：只能查看自己或同组成员的签名
     operator = db.session.get(OperatorGroup, int(id))
+    operator_id = session.get('operator_id')
     current_operator = db.session.get(OperatorGroup, int(operator_id))
     
     if not current_operator:
@@ -2376,7 +2553,7 @@ def get_operator_signature(id):
     if operator.signature_file:
         return jsonify({
             'success': True,
-            'signature_url': operator.signature_url,  # 使用新增的属性
+            'signature_url': operator.signature_url,
             'signature_time': operator.signature_time.strftime('%Y-%m-%d %H:%M:%S') if operator.signature_time else None,
             'operator_name': operator.operator_name
         })

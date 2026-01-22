@@ -155,13 +155,13 @@
             box-shadow: 0 4px 12px rgba(40, 167, 69, 0.2);
         }
 
-        .btn-removeowner {
+        .btn-delowner {
             background: linear-gradient(135deg, #ffc107, #fd7e14);
             padding: 6px 12px;
             font-size: 13px;
         }
 
-        .btn-removeowner:hover {
+        .btn-delowner:hover {
             background: linear-gradient(135deg, #fd7e14, #e8590c);
             transform: translateY(-1px);
             box-shadow: 0 4px 8px rgba(255, 193, 7, 0.2);
@@ -429,6 +429,13 @@
             font-size: 12px;
             font-weight: 600;
             display: inline-block;
+        }
+
+        /* 禁用状态按钮样式 - 新增 */
+        .btn-add.disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            pointer-events: none;
         }
 
         /* 响应式调整 */
@@ -1029,7 +1036,14 @@
             <div class="page-title">操作员管理</div>
             <div class="action-buttons">
                 <a href="{{ url_for('index') }}" class="btn btn-back">← 返回首页</a>
+                
+                <!-- 添加操作员按钮权限检查 - 新增权限检查 -->
+                {% if current_user.has_permission('operator_management', 'create') %}
                 <a href="{{ url_for('add_operator') }}" class="btn btn-add">+ 添加操作员</a>
+                {% else %}
+                <!-- 无权限用户的提示按钮 -->
+                <span class="btn btn-add disabled" title="您没有权限添加操作员">+ 添加操作员</span>
+                {% endif %}
             </div>
         </div>
 
@@ -1198,7 +1212,7 @@
                                         
                                         {% if operator.group_owner %}
                                         <button onclick="revokeGroupOwner({{ operator.id }}, '{{ operator.operator_name }}')" 
-                                                class="btn-small btn-removeowner">
+                                                class="btn-small btn-delowner">
                                             移除管理
                                         </button>
                                         {% else %}
@@ -1230,7 +1244,7 @@
             </div>
         </div>
 
-        <!-- 注意事项 -->
+        <!-- 注意事项 - 更新权限说明 -->
         <div
             style="background: #fff3cd; color: #856404; padding: 15px; border-radius: 6px; border-left: 4px solid #ffc107; margin-top: 20px;">
             <div style="font-weight: 600; margin-bottom: 5px; display: flex; align-items: center; gap: 8px;">
@@ -1334,10 +1348,42 @@
     </div>
 
     <script>
+        // 定义用户权限变量（用于前端权限检查）
+        const userPermissions = {
+            operator_management: {
+                advanced: {% if current_user and current_user.has_permission('operator_management', 'advanced') %}true{% else %}false{% endif %},
+                update: {% if current_user and current_user.has_permission('operator_management', 'update') %}true{% else %}false{% endif %},
+                delete: {% if current_user and current_user.has_permission('operator_management', 'delete') %}true{% else %}false{% endif %},
+                create: {% if current_user and current_user.has_permission('operator_management', 'create') %}true{% else %}false{% endif %} // 新增创建权限
+            }
+        };
+
+        // 权限检查函数 - 新增创建权限检查
+        function hasCreatePermission() {
+            return userPermissions.operator_management.create;
+        }
+
+        function hasAdvancedPermission() {
+            return userPermissions.operator_management.advanced;
+        }
+
+        function hasUpdatePermission() {
+            return userPermissions.operator_management.update;
+        }
+
+        function hasDeletePermission() {
+            return userPermissions.operator_management.delete;
+        }
+
         let currentResetOperatorId = null;
         let currentResetOperatorName = '';
 
         function confirmDeleteOperator(operatorName, groupName) {
+            if (!hasDeletePermission()) {
+                alert('您没有权限删除操作员！需要删除权限。');
+                return false;
+            }
+            
             {% if current_user.is_superuser %}
             return confirm(`确定要删除操作员 "${operatorName}" 吗？\n\n组名：${groupName}\n\n⚠️ 警告：您以超级管理员身份操作，可以删除被使用的操作员！`);
             {% else %}
@@ -1346,6 +1392,11 @@
         }
 
         function confirmDeleteGroup(groupName, memberCount) {
+            if (!hasDeletePermission()) {
+                alert('您没有权限删除操作员组！需要删除权限。');
+                return false;
+            }
+            
             {% if current_user.is_superuser %}
             return confirm(`确定要删除整个组 "${groupName}" 吗？\n\n组内成员：${memberCount} 人\n\n⚠️ 警告：您以超级管理员身份操作，可以删除被使用的组！`);
             {% else %}
@@ -1355,6 +1406,11 @@
 
         // 显示重置密码模态框
         function showResetPasswordModal(operatorId, operatorName) {
+            if (!hasUpdatePermission()) {
+                alert('您没有权限重置操作员密码！需要更新权限。');
+                return;
+            }
+            
             currentResetOperatorId = operatorId;
             currentResetOperatorName = operatorName;
             
@@ -1420,6 +1476,12 @@
 
         // 组管理员授权功能
         function grantGroupOwner(operatorId, operatorName, groupName) {
+            // 首先检查权限
+            if (!hasAdvancedPermission()) {
+                alert('您没有权限执行此操作！需要高级操作权限。');
+                return;
+            }
+            
             document.getElementById('grantOperatorId').value = operatorId;
             document.getElementById('grantGroupName').value = groupName;
             
@@ -1479,6 +1541,12 @@
         }
 
         function revokeGroupOwner(operatorId, operatorName) {
+            // 首先检查权限
+            if (!hasAdvancedPermission()) {
+                alert('您没有权限执行此操作！需要高级操作权限。');
+                return;
+            }
+            
             document.getElementById('revokeOperatorId').value = operatorId;
             
             document.getElementById('revokeOperatorInfo').innerHTML = `
@@ -1572,56 +1640,59 @@
             }
         });
 
-        // 页面加载时自动展开第一个组的详细信息（如果有的话）
+        // 页面加载时根据权限禁用相关按钮
         document.addEventListener('DOMContentLoaded', function () {
+            // 根据权限禁用高级操作按钮
+            if (!hasAdvancedPermission()) {
+                const advancedButtons = document.querySelectorAll('.btn-setowner, .btn-delowner');
+                advancedButtons.forEach(button => {
+                    button.disabled = true;
+                    button.title = '需要高级操作权限';
+                    button.style.opacity = '0.5';
+                    button.style.cursor = 'not-allowed';
+                    button.style.pointerEvents = 'none';
+                });
+            }
+            
+            // 根据权限禁用更新按钮
+            if (!hasUpdatePermission()) {
+                const updateButtons = document.querySelectorAll('.btn-reset-password');
+                updateButtons.forEach(button => {
+                    button.disabled = true;
+                    button.title = '需要更新权限';
+                    button.style.opacity = '0.5';
+                    button.style.cursor = 'not-allowed';
+                    button.style.pointerEvents = 'none';
+                });
+            }
+            
+            // 根据权限禁用删除按钮
+            if (!hasDeletePermission()) {
+                const deleteButtons = document.querySelectorAll('.btn-delete, .btn-delete-group');
+                deleteButtons.forEach(button => {
+                    if (button.tagName === 'A') {
+                        // 对于链接按钮，移除href并添加禁用样式
+                        button.removeAttribute('href');
+                        button.style.opacity = '0.5';
+                        button.style.cursor = 'not-allowed';
+                        button.style.pointerEvents = 'none';
+                    } else {
+                        // 对于按钮元素
+                        button.disabled = true;
+                        button.style.opacity = '0.5';
+                        button.style.cursor = 'not-allowed';
+                        button.style.pointerEvents = 'none';
+                    }
+                    button.title = '需要删除权限';
+                });
+            }
+            
+            // 默认展开第一个组的详细信息（如果有的话）
             if (document.querySelector('.group-section')) {
                 // 默认展开第一个组
                 toggleGroupDetails(1);
             }
             
-            // 为删除按钮添加二次确认
-            const deleteOperatorButtons = document.querySelectorAll('.btn-delete');
-            deleteOperatorButtons.forEach(button => {
-                button.addEventListener('click', function (e) {
-                    const row = this.closest('tr');
-                    const operatorName = row.querySelector('td:nth-child(2)').textContent.trim().replace('●', '').trim();
-                    const groupName = row.closest('.group-section').querySelector('.group-name').textContent.split(' ')[0];
-
-                    {% if current_user.is_superuser %}
-                    if (!confirm(`确定要删除操作员 "${operatorName}" 吗？\n\n组名：${groupName}\n\n⚠️ 警告：您以超级管理员身份操作，可以删除被使用的操作员！`)) {
-                        e.preventDefault();
-                    }
-                    {% else %}
-                    if (!confirm(`确定要删除操作员 "${operatorName}" 吗？\n\n组名：${groupName}\n\n注意：如果该操作员已被生产记录使用，删除可能导致数据不一致。`)) {
-                        e.preventDefault();
-                    }
-                    {% endif %}
-                });
-            });
-
-            // 为删除组按钮添加二次确认
-            const deleteGroupButtons = document.querySelectorAll('.btn-delete-group');
-            deleteGroupButtons.forEach(button => {
-                button.addEventListener('click', function (e) {
-                    const groupSection = this.closest('.group-section');
-                    const groupName = groupSection.querySelector('.group-name').textContent.split(' ')[0];
-                    const memberCount = groupSection.querySelector('.operator-count').textContent.replace('人', '').trim();
-
-                    {% if current_user.is_superuser %}
-                    if (!confirm(`确定要删除整个组 "${groupName}" 吗？\n\n组内成员：${memberCount} 人\n\n⚠️ 警告：您以超级管理员身份操作，可以删除被使用的组！`)) {
-                        e.preventDefault();
-                    }
-                    {% else %}
-                    if (!confirm(`确定要删除整个组 "${groupName}" 吗？\n\n组内成员：${memberCount} 人\n\n警告：此操作将永久删除该组及其所有操作员，且不可恢复！`)) {
-                        e.preventDefault();
-                    }
-                    {% endif %}
-                });
-            });
-        });
-
-        // 页面加载时自动处理已存在的flash消息
-        document.addEventListener('DOMContentLoaded', function() {
             // 为所有flash消息添加自动关闭功能
             const flashMessages = document.querySelectorAll('.flash');
             flashMessages.forEach(flash => {
