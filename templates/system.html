@@ -307,6 +307,31 @@
             margin-bottom: 20px;
         }
 
+        /* 手动备份区域 */
+        .manual-backup-section {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 25px 0;
+            border-left: 4px solid #007bff;
+        }
+
+        .manual-backup-section h3 {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+        }
+
         /* 响应式调整 */
         @media (max-width: 768px) {
             .container {
@@ -330,7 +355,7 @@
             .backup-item {
                 flex-direction: column;
                 align-items: flex-start;
-                gap: 10px;
+                    gap: 10px;
             }
 
             .backup-actions {
@@ -382,6 +407,13 @@
             background: #fff3cd;
             color: #856404;
             border-left-color: #ffc107;
+        }
+
+        /* 分隔线 */
+        .divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #e0e0e0, transparent);
+            margin: 25px 0;
         }
     </style>
 </head>
@@ -493,17 +525,112 @@
             </div>
         </div>
 
-        <!-- 数据库备份功能 -->
+        <!-- 备份管理 -->
         <div class="card">
             <div class="card-header">
-                数据库备份
+                备份管理
             </div>
             <div class="card-body">
-                <!-- 备份操作区域 -->
+                <!-- 定时备份设置 -->
                 <div style="margin-bottom: 30px;">
                     <h3 style="font-size: 16px; color: #333; margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
+                        <span>⏰</span>
+                        定时备份设置
+                    </h3>
+                    
+                    <div class="checkbox-group" style="margin-bottom: 15px;">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="enable_auto_backup">
+                            启用定时自动备份
+                        </label>
+                    </div>
+                    
+                    <div id="auto-backup-settings" style="display: none;">
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; color: #555; font-size: 14px;">
+                                备份时间（24小时制）
+                            </label>
+                            <input type="time" id="auto_backup_time" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                        </div>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                            <div>
+                                <label style="display: block; margin-bottom: 5px; color: #555; font-size: 14px;">
+                                    保留天数
+                                </label>
+                                <input type="number" id="backup_retention_days" min="1" max="365" 
+                                    style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 5px; color: #555; font-size: 14px;">
+                                    最大备份文件数
+                                </label>
+                                <input type="number" id="max_backup_files" min="1" max="1000" 
+                                    style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            </div>
+                        </div>
+                        
+                        <div class="checkbox-group" style="margin-bottom: 20px;">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="default_compress" checked>
+                                默认压缩备份文件
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="default_include_timestamp" checked>
+                                默认包含时间戳
+                            </label>
+                        </div>
+                        
+                        <div style="display: flex; gap: 10px;">
+                            <button onclick="saveBackupSettings()" class="btn btn-success">
+                                <span>💾</span>
+                                保存设置
+                            </button>
+                        </div>
+                        
+                        <div id="save-progress" class="backup-progress" style="margin-top: 15px;">
+                            <div class="progress-bar">
+                                <div id="save-progress-bar" class="progress-fill"></div>
+                            </div>
+                            <div id="save-status" class="progress-text">正在保存设置...</div>
+                        </div>
+                    </div>
+                    
+                    <!-- 当前设置状态 -->
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; border-left: 4px solid #6c757d; margin-top: 20px;">
+                        <div style="font-weight: 600; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                            <span>📊</span>
+                            当前备份状态
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; font-size: 13px;">
+                            <div>
+                                <span style="color: #666;">定时备份：</span>
+                                <span id="auto-backup-status" style="font-weight: 600;">--</span>
+                            </div>
+                            <div>
+                                <span style="color: #666;">下次备份：</span>
+                                <span id="next-backup-time" style="font-weight: 600;">--</span>
+                            </div>
+                            <div>
+                                <span style="color: #666;">备份时间：</span>
+                                <span id="backup-time-setting" style="font-weight: 600;">--</span>
+                            </div>
+                            <div>
+                                <span style="color: #666;">保留天数：</span>
+                                <span id="retention-days" style="font-weight: 600;">--</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 分隔线 -->
+                <div class="divider"></div>
+
+                <!-- 手动备份操作 -->
+                <div class="manual-backup-section">
+                    <h3>
                         <span>🔄</span>
-                        数据库备份操作
+                        立即备份数据库
                     </h3>
                     
                     <!-- 选项设置 -->
@@ -519,7 +646,7 @@
                     </div>
                     
                     <!-- 操作按钮 -->
-                    <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center;">
+                    <div class="action-buttons">
                         <button onclick="backupDatabase()" class="btn btn-success">
                             <span>📥</span>
                             立即备份数据库
@@ -534,6 +661,9 @@
                         <div id="backup-status" class="progress-text">正在准备备份...</div>
                     </div>
                 </div>
+
+                <!-- 分隔线 -->
+                <div class="divider"></div>
 
                 <!-- 备份文件列表 -->
                 <div>
@@ -560,15 +690,21 @@
             </div>
             <div style="font-size: 13px; line-height: 1.5;">
                 <p>1. <strong>系统管理功能仅限管理员使用</strong>，请谨慎操作。</p>
-                <p>2. <strong>数据库备份</strong>：
+                <p>2. <strong>定时自动备份</strong>：
                     <ul style="margin-left: 20px; margin-top: 5px; margin-bottom: 5px;">
-                        <li>建议定期进行数据库备份，确保数据安全</li>
-                        <li>备份文件包含时间戳，便于区分不同时间点的备份</li>
-                        <li>默认启用压缩功能以减少存储空间占用</li>
-                        <li>备份文件会自动下载到本地，建议妥善保存</li>
+                        <li>启用后系统会在指定时间自动备份数据库</li>
+                        <li>建议设置在业务低峰时段（如凌晨）进行备份</li>
+                        <li>系统会自动清理超过保留天数的旧备份</li>
                     </ul>
                 </p>
-                <p>3. <strong>备份文件管理</strong>：
+                <p>3. <strong>手动备份</strong>：
+                    <ul style="margin-left: 20px; margin-top: 5px; margin-bottom: 5px;">
+                        <li>可以随时执行手动备份，备份文件会自动下载</li>
+                        <li>建议在重要操作前手动备份数据库</li>
+                        <li>备份文件默认包含时间戳和压缩，以减少存储空间占用</li>
+                    </ul>
+                </p>
+                <p>4. <strong>备份文件管理</strong>：
                     <ul style="margin-left: 20px; margin-top: 5px; margin-bottom: 5px;">
                         <li>定期清理旧的备份文件以释放磁盘空间</li>
                         <li>删除备份文件前请确认不再需要恢复该版本</li>
@@ -585,9 +721,10 @@
     document.addEventListener('DOMContentLoaded', function() {
         loadBackupList();
         loadSystemStats();
+        loadBackupSettings();
     });
 
-    // 备份数据库
+    // 备份数据库（手动备份）
     function backupDatabase() {
         const includeTimestamp = document.getElementById('include_timestamp').checked;
         const compress = document.getElementById('compress_backup').checked;
@@ -739,12 +876,153 @@
                     document.getElementById('backup-count').textContent = data.backup_count;
                     document.getElementById('last-backup').textContent = data.last_backup || '无';
                     document.getElementById('total-backup-size').textContent = data.total_backup_size;
+                    
+                    // 更新定时备份状态
+                    document.getElementById('auto-backup-status').textContent = 
+                        data.auto_backup_enabled ? '已启用' : '已禁用';
+                    document.getElementById('next-backup-time').textContent = 
+                        data.auto_backup_enabled ? (data.next_auto_backup || '未知') : '--';
+                    document.getElementById('retention-days').textContent = 
+                        data.backup_retention_days;
                 }
             })
             .catch(error => {
                 console.error('加载系统状态失败：', error);
             });
     }
+
+    // 加载备份设置
+    function loadBackupSettings() {
+        fetch('/system/backup/schedule')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 更新表单
+                    document.getElementById('enable_auto_backup').checked = data.enable_auto_backup;
+                    document.getElementById('auto_backup_time').value = data.auto_backup_time;
+                    document.getElementById('backup_retention_days').value = data.backup_retention_days;
+                    document.getElementById('max_backup_files').value = data.max_backup_files;
+                    document.getElementById('default_compress').checked = data.default_compress;
+                    document.getElementById('default_include_timestamp').checked = data.default_include_timestamp;
+                    
+                    // 显示/隐藏设置区域
+                    const settingsDiv = document.getElementById('auto-backup-settings');
+                    settingsDiv.style.display = data.enable_auto_backup ? 'block' : 'none';
+                    
+                    // 更新状态显示
+                    document.getElementById('auto-backup-status').textContent = 
+                        data.enable_auto_backup ? '已启用' : '已禁用';
+                    document.getElementById('backup-time-setting').textContent = 
+                        data.enable_auto_backup ? data.auto_backup_time : '--';
+                    document.getElementById('retention-days').textContent = 
+                        data.backup_retention_days;
+                    
+                    // 更新系统统计中的定时备份信息
+                    if (data.enable_auto_backup) {
+                        document.getElementById('next-backup-time').textContent = 
+                            '等待更新...';
+                    } else {
+                        document.getElementById('next-backup-time').textContent = '--';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('加载备份设置失败：', error);
+            });
+    }
+
+    // 保存备份设置
+    function saveBackupSettings() {
+        const enable_auto_backup = document.getElementById('enable_auto_backup').checked;
+        const auto_backup_time = document.getElementById('auto_backup_time').value;
+        const backup_retention_days = parseInt(document.getElementById('backup_retention_days').value);
+        const max_backup_files = parseInt(document.getElementById('max_backup_files').value);
+        const default_compress = document.getElementById('default_compress').checked;
+        const default_include_timestamp = document.getElementById('default_include_timestamp').checked;
+        
+        // 验证输入
+        if (enable_auto_backup && !auto_backup_time) {
+            showAlert('请设置备份时间！', 'warning');
+            return;
+        }
+        
+        if (backup_retention_days < 1 || backup_retention_days > 365) {
+            showAlert('保留天数必须在1-365之间！', 'warning');
+            return;
+        }
+        
+        if (max_backup_files < 1 || max_backup_files > 1000) {
+            showAlert('最大备份文件数必须在1-1000之间！', 'warning');
+            return;
+        }
+        
+        // 显示进度条
+        const progressDiv = document.getElementById('save-progress');
+        const progressBar = document.getElementById('save-progress-bar');
+        const statusDiv = document.getElementById('save-status');
+        
+        progressDiv.style.display = 'block';
+        progressBar.style.width = '30%';
+        statusDiv.textContent = '正在保存设置...';
+        
+        fetch('/system/backup/schedule/update', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                enable_auto_backup: enable_auto_backup,
+                auto_backup_time: auto_backup_time,
+                backup_retention_days: backup_retention_days,
+                max_backup_files: max_backup_files,
+                default_compress: default_compress,
+                default_include_timestamp: default_include_timestamp
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                progressBar.style.width = '100%';
+                statusDiv.textContent = '设置保存成功！';
+                
+                // 更新显示
+                document.getElementById('auto-backup-status').textContent = 
+                    enable_auto_backup ? '已启用' : '已禁用';
+                document.getElementById('backup-time-setting').textContent = 
+                    enable_auto_backup ? auto_backup_time : '--';
+                document.getElementById('retention-days').textContent = backup_retention_days;
+                
+                // 重新加载系统状态
+                loadSystemStats();
+                
+                // 隐藏进度条
+                setTimeout(() => {
+                    progressDiv.style.display = 'none';
+                    progressBar.style.width = '0%';
+                }, 1000);
+                
+                showAlert('备份设置已更新！', 'success');
+            } else {
+                progressDiv.style.display = 'none';
+                showAlert('保存失败：' + data.message, 'danger');
+            }
+        })
+        .catch(error => {
+            progressDiv.style.display = 'none';
+            showAlert('保存失败：' + error.message, 'danger');
+        });
+    }
+
+    // 切换自动备份设置显示
+    document.getElementById('enable_auto_backup').addEventListener('change', function() {
+        const settingsDiv = document.getElementById('auto-backup-settings');
+        settingsDiv.style.display = this.checked ? 'block' : 'none';
+    });
+
+    // 定期更新系统状态
+    setInterval(() => {
+        loadSystemStats();
+    }, 60000); // 每分钟更新一次
 
     // 显示提示消息
     function showAlert(message, type) {

@@ -15,21 +15,56 @@ from pathlib import Path
 import gzip
 import zipfile
 from datetime import datetime
+import configparser
+from apscheduler.schedulers.background import BackgroundScheduler
+import atexit
+import threading
+import time
 
-# -------------------------- PostgreSQL配置 --------------------------
-DB_USER = 'postgres'
-DB_PASSWORD = '000000'
-DB_HOST = 'localhost'
-DB_PORT = '5432'
-DB_NAME = 'openpms_db'
+# -------------------------- 读取配置文件 --------------------------
+config = configparser.ConfigParser()
+config.read('config.conf')
 
-# -------------------------- 文件存储配置 --------------------------
-SIGNATURE_STORAGE_PATH = 'static/signatures/'
-BACKUP_STORAGE_PATH = 'backups/'
-if not os.path.exists(SIGNATURE_STORAGE_PATH):
-    os.makedirs(SIGNATURE_STORAGE_PATH, exist_ok=True)
-if not os.path.exists(BACKUP_STORAGE_PATH):
-    os.makedirs(BACKUP_STORAGE_PATH, exist_ok=True)
+# 读取PostgreSQL配置
+DB_USER = config.get('postgresql', 'DB_USER')
+DB_PASSWORD = config.get('postgresql', 'DB_PASSWORD')
+DB_HOST = config.get('postgresql', 'DB_HOST')
+DB_PORT = config.get('postgresql', 'DB_PORT')
+DB_NAME = config.get('postgresql', 'DB_NAME')
+
+# 读取文件存储配置
+SIGNATURE_STORAGE_PATH = config.get('storage', 'SIGNATURE_STORAGE_PATH')
+BACKUP_STORAGE_PATH = config.get('storage', 'BACKUP_STORAGE_PATH')
+LOG_STORAGE_PATH = config.get('storage', 'LOG_STORAGE_PATH')
+ARCHIVE_STORAGE_PATH = config.get('storage', 'ARCHIVE_STORAGE_PATH', fallback='logs/archive/')
+
+# 读取备份配置
+ENABLE_AUTO_BACKUP = config.getboolean('backup', 'ENABLE_AUTO_BACKUP', fallback=False)
+AUTO_BACKUP_TIME = config.get('backup', 'AUTO_BACKUP_TIME', fallback='02:00')
+BACKUP_RETENTION_DAYS = config.getint('backup', 'BACKUP_RETENTION_DAYS', fallback=30)
+MAX_BACKUP_FILES = config.getint('backup', 'MAX_BACKUP_FILES', fallback=50)
+DEFAULT_COMPRESS = config.getboolean('backup', 'DEFAULT_COMPRESS', fallback=True)
+DEFAULT_INCLUDE_TIMESTAMP = config.getboolean('backup', 'DEFAULT_INCLUDE_TIMESTAMP', fallback=True)
+
+# 读取日志配置
+LOG_RETENTION_DAYS = config.getint('logs', 'LOG_RETENTION_DAYS', fallback=7)
+
+# 读取应用配置
+SECRET_KEY = config.get('app', 'SECRET_KEY', fallback=os.urandom(24))
+DEBUG = config.getboolean('app', 'DEBUG', fallback=False)
+HOST = config.get('app', 'HOST', fallback='0.0.0.0')
+PORT = config.getint('app', 'PORT', fallback=80)
+
+# 创建必要的目录
+required_dirs = [
+    SIGNATURE_STORAGE_PATH,
+    BACKUP_STORAGE_PATH,
+    LOG_STORAGE_PATH,
+    ARCHIVE_STORAGE_PATH
+]
+
+for dir_path in required_dirs:
+    os.makedirs(dir_path, exist_ok=True)
 
 # 初始化Flask应用
 app = Flask(__name__)
@@ -85,6 +120,36 @@ def delete_signature_file(filename):
     except Exception as e:
         app.logger.error(f"删除签名文件失败: {str(e)}")
     return False
+
+def format_file_size(bytes_size):
+    """格式化文件大小为可读的字符串"""
+    if bytes_size is None:
+        return "0 B"
+    
+    try:
+        bytes_size = int(bytes_size)
+    except (ValueError, TypeError):
+        return "0 B"
+    
+    # 处理负数
+    if bytes_size < 0:
+        return "0 B"
+    
+    # 单位列表
+    units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
+    
+    # 计算合适的单位
+    size = float(bytes_size)
+    unit_index = 0
+    while size >= 1024 and unit_index < len(units) - 1:
+        size /= 1024
+        unit_index += 1
+    
+    # 格式化输出
+    if unit_index == 0:
+        return f"{int(size)} {units[unit_index]}"
+    else:
+        return f"{size:.2f} {units[unit_index]}"
 
 # -------------------------- 数据模型 --------------------------
 class User(UserMixin, db.Model):
@@ -534,7 +599,7 @@ def log_activity(log_type, action, user_type, user_id, username,
 def write_file_log(log):
     """写入文件日志"""
     try:
-        log_dir = 'logs/'
+        log_dir = LOG_STORAGE_PATH
         if not os.path.exists(log_dir):
             os.makedirs(log_dir, exist_ok=True)
         
@@ -2553,29 +2618,24 @@ def delete_operator_group(group_name):
 def system_management():
     return render_template('system.html')
 
-# -------------------------- 数据库备份功能 --------------------------
-@app.route('/system/backup', methods=['POST'])
-@login_required
-@permission_required('system_management', 'advanced')
-def backup_database():
-    """创建数据库备份"""
+# -------------------------- 备份相关函数 --------------------------
+def perform_backup(include_timestamp=True, compress=True, is_auto_backup=False):
+    """执行数据库备份的核心函数"""
     try:
-        # 只有超级管理员可以备份
-        if not current_user.is_superuser:
-            return jsonify({'success': False, 'message': '需要超级管理员权限'})
-        
-        data = request.get_json()
-        include_timestamp = data.get('include_timestamp', True)
-        compress = data.get('compress', True)
-        
         # 生成备份文件名
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         db_name = DB_NAME
         
         if include_timestamp:
-            filename = f"{db_name}_backup_{timestamp}.sql"
+            if is_auto_backup:
+                filename = f"{db_name}_auto_{timestamp}.sql"
+            else:
+                filename = f"{db_name}_backup_{timestamp}.sql"
         else:
-            filename = f"{db_name}_backup.sql"
+            if is_auto_backup:
+                filename = f"{db_name}_auto_backup.sql"
+            else:
+                filename = f"{db_name}_backup.sql"
         
         filepath = os.path.join(BACKUP_STORAGE_PATH, filename)
         
@@ -2597,29 +2657,11 @@ def backup_database():
         
         if result.returncode != 0:
             app.logger.error(f"数据库备份失败: {result.stderr}")
-            return jsonify({'success': False, 'message': f'备份失败: {result.stderr}'})
-        
-        # 记录备份日志
-        log_activity(
-            log_type='backup',
-            action='backup',
-            user_type='admin',
-            user_id=current_user.id,
-            username=current_user.username,
-            target_info={
-                'filename': filename,
-                'include_timestamp': include_timestamp,
-                'compress': compress
-            },
-            request=request
-        )
+            return {'success': False, 'message': f'备份失败: {result.stderr}'}
         
         # 如果需要压缩
         final_filename = filename
-        download_path = f"/system/backup/download/{filename}"
-        
         if compress:
-            # 压缩文件
             compressed_filename = filename + '.gz'
             compressed_filepath = os.path.join(BACKUP_STORAGE_PATH, compressed_filename)
             
@@ -2629,22 +2671,195 @@ def backup_database():
             
             # 删除未压缩的文件
             os.remove(filepath)
-            
             final_filename = compressed_filename
-            download_path = f"/system/backup/download/{compressed_filename}"
         
         app.logger.info(f"数据库备份成功: {final_filename}")
-        return jsonify({
+        return {
             'success': True,
             'message': '数据库备份成功',
             'filename': final_filename,
-            'download_url': download_path,
-            'timestamp': timestamp
-        })
+            'timestamp': timestamp,
+            'is_auto_backup': is_auto_backup
+        }
         
     except Exception as e:
         app.logger.error(f"备份过程中出错: {str(e)}")
-        return jsonify({'success': False, 'message': f'备份失败: {str(e)}'})
+        return {'success': False, 'message': f'备份失败: {str(e)}'}
+
+def cleanup_old_backups():
+    """清理旧的备份文件"""
+    try:
+        backup_dir = Path(BACKUP_STORAGE_PATH)
+        
+        if not backup_dir.exists():
+            return
+        
+        backup_files = []
+        for file in backup_dir.iterdir():
+            if file.is_file() and file.suffix in ['.sql', '.gz']:
+                stats = file.stat()
+                backup_files.append({
+                    'file': file,
+                    'ctime': stats.st_ctime,
+                    'age_days': (time.time() - stats.st_ctime) / (24 * 3600)
+                })
+        
+        # 按创建时间排序，最旧的在前
+        backup_files.sort(key=lambda x: x['ctime'])
+        
+        # 清理超过保留天数的备份
+        cleaned_count = 0
+        for backup in backup_files[:]:
+            if backup['age_days'] > BACKUP_RETENTION_DAYS:
+                try:
+                    backup['file'].unlink()
+                    backup_files.remove(backup)
+                    cleaned_count += 1
+                    app.logger.info(f"删除旧备份: {backup['file'].name}")
+                except Exception as e:
+                    app.logger.error(f"删除备份文件失败 {backup['file'].name}: {str(e)}")
+        
+        # 如果文件数量超过最大限制，删除最旧的
+        if len(backup_files) > MAX_BACKUP_FILES:
+            files_to_delete = backup_files[:len(backup_files) - MAX_BACKUP_FILES]
+            for backup in files_to_delete:
+                try:
+                    backup['file'].unlink()
+                    cleaned_count += 1
+                    app.logger.info(f"删除超额备份: {backup['file'].name}")
+                except Exception as e:
+                    app.logger.error(f"删除备份文件失败 {backup['file'].name}: {str(e)}")
+        
+        if cleaned_count > 0:
+            app.logger.info(f"已清理 {cleaned_count} 个旧备份文件")
+            
+    except Exception as e:
+        app.logger.error(f"清理旧备份失败: {str(e)}")
+
+def auto_backup_job():
+    """定时备份任务"""
+    if not ENABLE_AUTO_BACKUP:
+        return
+    
+    try:
+        app.logger.info(f"开始执行定时备份，时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        
+        # 执行备份
+        result = perform_backup(
+            include_timestamp=DEFAULT_INCLUDE_TIMESTAMP,
+            compress=DEFAULT_COMPRESS,
+            is_auto_backup=True
+        )
+        
+        if result['success']:
+            # 记录备份日志
+            log_activity(
+                log_type='backup',
+                action='backup',
+                user_type='system',
+                user_id=None,
+                username='系统自动任务',
+                target_info={
+                    'filename': result['filename'],
+                    'is_auto_backup': True,
+                    'timestamp': result['timestamp']
+                },
+                request=None
+            )
+            app.logger.info(f"定时备份成功: {result['filename']}")
+            
+            # 清理旧备份
+            cleanup_old_backups()
+        else:
+            app.logger.error(f"定时备份失败: {result['message']}")
+            
+    except Exception as e:
+        app.logger.error(f"定时备份任务执行失败: {str(e)}")
+
+# -------------------------- 初始化定时调度器 --------------------------
+def init_scheduler():
+    """初始化定时任务调度器"""
+    if not ENABLE_AUTO_BACKUP:
+        return None
+    
+    try:
+        scheduler = BackgroundScheduler()
+        scheduler.add_jobstore('memory')
+        
+        # 添加定时备份任务
+        hour, minute = map(int, AUTO_BACKUP_TIME.split(':'))
+        scheduler.add_job(
+            auto_backup_job,
+            'cron',
+            hour=hour,
+            minute=minute,
+            id='auto_backup',
+            name='自动数据库备份',
+            replace_existing=True
+        )
+        
+        # 添加清理任务（每天3:00执行）
+        scheduler.add_job(
+            cleanup_old_backups,
+            'cron',
+            hour=3,
+            minute=0,
+            id='cleanup_backups',
+            name='清理旧备份',
+            replace_existing=True
+        )
+        
+        scheduler.start()
+        app.logger.info(f"定时任务调度器已启动，自动备份时间: {AUTO_BACKUP_TIME}")
+        return scheduler
+        
+    except Exception as e:
+        app.logger.error(f"启动定时任务调度器失败: {str(e)}")
+        return None
+
+# -------------------------- 数据库备份功能 --------------------------
+@app.route('/system/backup', methods=['POST'])
+@login_required
+@permission_required('system_management', 'advanced')
+def backup_database():
+    """创建数据库备份"""
+    # 只有超级管理员可以备份
+    if not current_user.is_superuser:
+        return jsonify({'success': False, 'message': '需要超级管理员权限'})
+    
+    data = request.get_json()
+    include_timestamp = data.get('include_timestamp', DEFAULT_INCLUDE_TIMESTAMP)
+    compress = data.get('compress', DEFAULT_COMPRESS)
+    
+    result = perform_backup(include_timestamp=include_timestamp, compress=compress)
+    
+    if result['success']:
+        # 记录备份日志
+        log_activity(
+            log_type='backup',
+            action='backup',
+            user_type='admin',
+            user_id=current_user.id,
+            username=current_user.username,
+            target_info={
+                'filename': result['filename'],
+                'include_timestamp': include_timestamp,
+                'compress': compress
+            },
+            request=request
+        )
+        
+        download_path = f"/system/backup/download/{result['filename']}"
+        
+        return jsonify({
+            'success': True,
+            'message': '数据库备份成功',
+            'filename': result['filename'],
+            'download_url': download_path,
+            'timestamp': result['timestamp']
+        })
+    else:
+        return jsonify({'success': False, 'message': result['message']})
 
 @app.route('/system/backup/list')
 @login_required
@@ -2740,7 +2955,148 @@ def delete_backup(filename):
     except Exception as e:
         app.logger.error(f"删除备份文件失败: {str(e)}")
         return jsonify({'success': False, 'message': f'删除失败: {str(e)}'})
+    
+# -------------------------- 定时备份管理API --------------------------
+@app.route('/system/backup/schedule', methods=['GET'])
+@login_required
+@permission_required('system_management', 'advanced')
+def get_backup_schedule():
+    """获取定时备份设置"""
+    if not current_user.is_superuser:
+        return jsonify({'success': False, 'message': '需要超级管理员权限'})
+    
+    return jsonify({
+        'success': True,
+        'enable_auto_backup': ENABLE_AUTO_BACKUP,
+        'auto_backup_time': AUTO_BACKUP_TIME,
+        'backup_retention_days': BACKUP_RETENTION_DAYS,
+        'max_backup_files': MAX_BACKUP_FILES,
+        'default_compress': DEFAULT_COMPRESS,
+        'default_include_timestamp': DEFAULT_INCLUDE_TIMESTAMP
+    })
 
+@app.route('/system/backup/schedule/update', methods=['POST'])
+@login_required
+@permission_required('system_management', 'advanced')
+def update_backup_schedule():
+    """更新定时备份设置"""
+    if not current_user.is_superuser:
+        return jsonify({'success': False, 'message': '需要超级管理员权限'})
+    
+    # 全局声明移到函数顶部
+    global ENABLE_AUTO_BACKUP, AUTO_BACKUP_TIME, BACKUP_RETENTION_DAYS
+    global MAX_BACKUP_FILES, DEFAULT_COMPRESS, DEFAULT_INCLUDE_TIMESTAMP
+    
+    try:
+        data = request.get_json()
+        
+        # 更新配置对象
+        config.set('backup', 'ENABLE_AUTO_BACKUP', str(data.get('enable_auto_backup', ENABLE_AUTO_BACKUP)))
+        config.set('backup', 'AUTO_BACKUP_TIME', data.get('auto_backup_time', AUTO_BACKUP_TIME))
+        config.set('backup', 'BACKUP_RETENTION_DAYS', str(data.get('backup_retention_days', BACKUP_RETENTION_DAYS)))
+        config.set('backup', 'MAX_BACKUP_FILES', str(data.get('max_backup_files', MAX_BACKUP_FILES)))
+        config.set('backup', 'DEFAULT_COMPRESS', str(data.get('default_compress', DEFAULT_COMPRESS)))
+        config.set('backup', 'DEFAULT_INCLUDE_TIMESTAMP', str(data.get('default_include_timestamp', DEFAULT_INCLUDE_TIMESTAMP)))
+        
+        # 保存到配置文件
+        with open('config.conf', 'w') as configfile:
+            config.write(configfile)
+        
+        # 重新加载配置
+        ENABLE_AUTO_BACKUP = config.getboolean('backup', 'ENABLE_AUTO_BACKUP')
+        AUTO_BACKUP_TIME = config.get('backup', 'AUTO_BACKUP_TIME')
+        BACKUP_RETENTION_DAYS = config.getint('backup', 'BACKUP_RETENTION_DAYS')
+        MAX_BACKUP_FILES = config.getint('backup', 'MAX_BACKUP_FILES')
+        DEFAULT_COMPRESS = config.getboolean('backup', 'DEFAULT_COMPRESS')
+        DEFAULT_INCLUDE_TIMESTAMP = config.getboolean('backup', 'DEFAULT_INCLUDE_TIMESTAMP')
+        
+        # 重启调度器
+        if hasattr(app, 'scheduler') and app.scheduler:
+            app.scheduler.shutdown()
+        
+        app.scheduler = init_scheduler()
+        
+        # 记录配置更改日志
+        log_activity(
+            log_type='system',
+            action='update',
+            user_type='admin',
+            user_id=current_user.id,
+            username=current_user.username,
+            target_info={
+                'action': 'update_backup_schedule',
+                'new_settings': data
+            },
+            request=request
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': '备份设置已更新',
+            'settings': {
+                'enable_auto_backup': ENABLE_AUTO_BACKUP,
+                'auto_backup_time': AUTO_BACKUP_TIME,
+                'backup_retention_days': BACKUP_RETENTION_DAYS,
+                'max_backup_files': MAX_BACKUP_FILES,
+                'default_compress': DEFAULT_COMPRESS,
+                'default_include_timestamp': DEFAULT_INCLUDE_TIMESTAMP
+            }
+        })
+        
+    except Exception as e:
+        app.logger.error(f"更新备份设置失败: {str(e)}")
+        return jsonify({'success': False, 'message': f'更新失败: {str(e)}'})
+
+@app.route('/system/backup/run_now', methods=['POST'])
+@login_required
+@permission_required('system_management', 'advanced')
+def run_backup_now():
+    """立即执行备份（手动触发）"""
+    if not current_user.is_superuser:
+        return jsonify({'success': False, 'message': '需要超级管理员权限'})
+    
+    try:
+        # 在新线程中执行备份，避免阻塞请求
+        def backup_thread():
+            result = perform_backup(
+                include_timestamp=DEFAULT_INCLUDE_TIMESTAMP,
+                compress=DEFAULT_COMPRESS,
+                is_auto_backup=False
+            )
+            
+            if result['success']:
+                # 记录备份日志
+                log_activity(
+                    log_type='backup',
+                    action='backup',
+                    user_type='admin',
+                    user_id=current_user.id,
+                    username=current_user.username,
+                    target_info={
+                        'filename': result['filename'],
+                        'is_auto_backup': False,
+                        'timestamp': result['timestamp']
+                    },
+                    request=request
+                )
+                app.logger.info(f"手动触发备份成功: {result['filename']}")
+            else:
+                app.logger.error(f"手动触发备份失败: {result['message']}")
+        
+        thread = threading.Thread(target=backup_thread)
+        thread.daemon = True
+        thread.start()
+        
+        return jsonify({
+            'success': True,
+            'message': '备份任务已启动，请稍后在备份列表中查看结果'
+        })
+        
+    except Exception as e:
+        app.logger.error(f"启动备份任务失败: {str(e)}")
+        return jsonify({'success': False, 'message': f'启动备份失败: {str(e)}'})
+
+# -------------------------- 系统状态API --------------------------
 @app.route('/system/stats')
 @login_required
 @permission_required('system_management', 'read')
@@ -2775,6 +3131,8 @@ def system_stats():
         backup_count = 0
         total_backup_size = 0
         last_backup = None
+        auto_backup_count = 0
+        manual_backup_count = 0
         
         if backup_dir.exists():
             backup_files = list(backup_dir.glob('*.sql')) + list(backup_dir.glob('*.gz')) + list(backup_dir.glob('*.zip'))
@@ -2782,34 +3140,46 @@ def system_stats():
             
             for file in backup_files:
                 total_backup_size += file.stat().st_size
+                if 'auto' in file.name.lower():
+                    auto_backup_count += 1
+                else:
+                    manual_backup_count += 1
             
             if backup_files:
                 # 按修改时间排序，获取最新的备份
                 latest_backup = max(backup_files, key=lambda f: f.stat().st_mtime)
                 last_backup = datetime.fromtimestamp(latest_backup.stat().st_mtime).strftime('%Y-%m-%d %H:%M')
         
+        # 定时备份状态
+        next_backup = "未启用"
+        if ENABLE_AUTO_BACKUP and hasattr(app, 'scheduler') and app.scheduler:
+            try:
+                job = app.scheduler.get_job('auto_backup')
+                if job:
+                    next_run = job.next_run_time
+                    if next_run:
+                        next_backup = next_run.strftime('%Y-%m-%d %H:%M:%S')
+            except:
+                next_backup = "未知"
+        
         return jsonify({
             'success': True,
             'database_size': db_size,
             'backup_count': backup_count,
+            'auto_backup_count': auto_backup_count,
+            'manual_backup_count': manual_backup_count,
             'total_backup_size': format_file_size(total_backup_size),
-            'last_backup': last_backup
+            'last_backup': last_backup,
+            'auto_backup_enabled': ENABLE_AUTO_BACKUP,
+            'auto_backup_time': AUTO_BACKUP_TIME,
+            'next_auto_backup': next_backup,
+            'backup_retention_days': BACKUP_RETENTION_DAYS,
+            'max_backup_files': MAX_BACKUP_FILES
         })
         
     except Exception as e:
         app.logger.error(f"获取系统统计失败: {str(e)}")
         return jsonify({'success': False, 'message': f'获取统计失败: {str(e)}'})
-
-def format_file_size(bytes):
-    """格式化文件大小"""
-    if bytes < 1024:
-        return f"{bytes} B"
-    elif bytes < 1024 * 1024:
-        return f"{bytes / 1024:.1f} KB"
-    elif bytes < 1024 * 1024 * 1024:
-        return f"{bytes / (1024 * 1024):.1f} MB"
-    else:
-        return f"{bytes / (1024 * 1024 * 1024):.2f} GB"
 
 # -------------------------- 操作员功能 --------------------------
 @app.route('/operator/dashboard')
