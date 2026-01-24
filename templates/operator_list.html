@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>操作员管理 - OpenPMS</title>
+    <title>成员管理 - OpenPMS</title>
     <style>
         * {
             margin: 0;
@@ -408,7 +408,7 @@
             margin-left: 10px;
         }
 
-        /* 操作员序号徽章 */
+        /* 成员序号徽章 */
         .operator-id-badge {
             background: linear-gradient(135deg, #6c757d, #495057);
             color: white;
@@ -714,7 +714,7 @@
             align-items: center;
         }
 
-        /* 操作员徽章组 */
+        /* 成员徽章组 */
         .operator-badges-container {
             display: flex;
             flex-wrap: wrap;
@@ -743,7 +743,7 @@
             margin-left: 8px;
         }
 
-        /* 操作员状态指示器 */
+        /* 成员状态指示器 */
         .status-indicator {
             display: inline-block;
             width: 10px;
@@ -766,7 +766,7 @@
             text-align: center;
         }
 
-        .group-details-table th:nth-child(2),  /* 操作员列 */
+        .group-details-table th:nth-child(2),  /* 成员列 */
         .group-details-table td:nth-child(2) {
             width: 22%;
             min-width: 120px;
@@ -857,7 +857,7 @@
             border: 1px solid #e9ecef;
         }
 
-        /* 操作员名字显示优化 */
+        /* 成员名字显示优化 */
         .operator-name-cell {
             display: flex;
             align-items: center;
@@ -1006,7 +1006,7 @@
             {% endif %}
 
             {% if has_perm('manage_operator') %}
-            <a href="{{ url_for('operator_list') }}" class="nav-btn active">操作员管理</a>
+            <a href="{{ url_for('operator_list') }}" class="nav-btn active">成员管理</a>
             {% endif %}
 
             {% if has_perm('manage_users') %}
@@ -1033,16 +1033,16 @@
 
         <!-- 页面标题和操作区域 -->
         <div class="page-header">
-            <div class="page-title">操作员管理</div>
+            <div class="page-title">成员管理</div>
             <div class="action-buttons">
                 <a href="{{ url_for('index') }}" class="btn btn-back">← 返回首页</a>
                 
-                <!-- 添加操作员按钮权限检查 - 新增权限检查 -->
+                <!-- 添加成员按钮权限检查 - 新增权限检查 -->
                 {% if current_user.has_permission('operator_management', 'create') %}
-                <a href="{{ url_for('add_operator') }}" class="btn btn-add">+ 添加操作员</a>
+                <a href="{{ url_for('add_operator') }}" class="btn btn-add">+ 添加成员</a>
                 {% else %}
                 <!-- 无权限用户的提示按钮 -->
-                <span class="btn btn-add disabled" title="您没有权限添加操作员">+ 添加操作员</span>
+                <span class="btn btn-add disabled" title="您没有权限添加成员">+ 添加成员</span>
                 {% endif %}
             </div>
         </div>
@@ -1067,10 +1067,10 @@
         </div>
         {% endif %}
 
-        <!-- 操作员统计 -->
+        <!-- 成员统计 -->
         <div class="stats-row">
             <div class="stat-card">
-                <div class="stat-title">操作员总数</div>
+                <div class="stat-title">成员总数</div>
                 <div class="stat-number">{{ operators|length }}</div>
             </div>
             <div class="stat-card">
@@ -1089,9 +1089,9 @@
         <!-- 整合的按组查看卡片（包含详细列表） -->
         <div class="card">
             <div class="card-header">
-                操作员管理
+                成员管理
                 <span style="font-size: 13px; font-weight: normal; margin-left: 10px; opacity: 0.9;">
-                    共 {{ groups|length }} 个组，{{ operators|length }} 个操作员
+                    共 {{ groups|length }} 个组，{{ operators|length }} 个成员
                 </span>
             </div>
 
@@ -1124,7 +1124,7 @@
                         </div>
                     </div>
 
-                    <!-- 操作员徽章列表 -->
+                    <!-- 成员徽章列表 -->
                     <div class="group-operator-list">
                         <div style="font-size: 13px; color: #666; margin-bottom: 8px;">组内成员：</div>
                         <div class="operator-badges-container">
@@ -1149,7 +1149,7 @@
                         <thead>
                             <tr>
                                 <th>ID</th>
-                                <th>操作员</th>
+                                <th>成员</th>
                                 <th>签字状态</th>
                                 <th>创建时间</th>
                                 <th>操作</th>
@@ -1237,8 +1237,8 @@
                 {% else %}
                 <div class="empty-state">
                     <div class="empty-icon">👷</div>
-                    <h3>暂无操作员数据</h3>
-                    <p>系统中还没有任何操作员，请点击"添加操作员"按钮创建新操作员</p>
+                    <h3>暂无成员数据</h3>
+                    <p>系统中还没有任何成员，请点击"添加成员"按钮创建新成员</p>
                 </div>
                 {% endif %}
             </div>
@@ -1251,17 +1251,17 @@
                 <span>⚠️</span> 注意事项
             </div>
             <div style="font-size: 13px; line-height: 1.5;">
-                <p>1. 点击"查看详情"按钮可以展开/收起组内操作员的详细信息和操作按钮。</p>
+                <p>1. 点击"查看详情"按钮可以展开/收起组内成员的详细信息和操作按钮。</p>
                 <p>2. 组管理员会在列表中优先展示。</p>
-                <p>3. 删除操作员或整组前请确保没有生产记录正在使用，否则可能导致数据不一致。</p>
-                <p>4. 删除整组将移除该组所有操作员，此操作不可恢复。</p>
-                <p>5. 操作员按组管理，便于在生产记录中快速选择。</p>
+                <p>3. 删除成员或整组前请确保没有生产记录正在使用，否则可能导致数据不一致。</p>
+                <p>4. 删除整组将移除该组所有成员，此操作不可恢复。</p>
+                <p>5. 成员按组管理，便于在生产记录中快速选择。</p>
                 <p>6. 组管理员可以查看组内所有生产记录并进行签字确认。</p>
                 <p>7. 每个组只能有一个组管理员，设置新组管理员会自动移除原组管理员权限。</p>
                 {% if current_user and current_user.is_superuser %}
-                <p style="color: #dc3545; font-weight: 600;">⚠️ 您当前以超级管理员身份登录，可以删除被使用的操作员和组。</p>
+                <p style="color: #dc3545; font-weight: 600;">⚠️ 您当前以超级管理员身份登录，可以删除被使用的成员和组。</p>
                 {% elif current_user and current_user.is_admin %}
-                <p style="color: #28a745; font-weight: 600;">✅ 您当前以管理员身份登录，可以管理所有操作员和组。</p>
+                <p style="color: #28a745; font-weight: 600;">✅ 您当前以管理员身份登录，可以管理所有成员和组。</p>
                 {% endif %}
             </div>
         </div>
@@ -1271,11 +1271,11 @@
     <div id="resetPasswordModal" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>重置操作员密码</h3>
+                <h3>重置成员密码</h3>
             </div>
             <div class="modal-body">
                 <div class="operator-info" id="resetOperatorInfo">
-                    <!-- 操作员信息将在这里动态显示 -->
+                    <!-- 成员信息将在这里动态显示 -->
                 </div>
                 <form id="resetPasswordForm">
                     <div class="form-group">
@@ -1301,7 +1301,7 @@
             </div>
             <div class="modal-body">
                 <div class="operator-info" id="groupOwnerOperatorInfo">
-                    <!-- 操作员信息将在这里动态显示 -->
+                    <!-- 成员信息将在这里动态显示 -->
                 </div>
                 <div style="background: #fff3cd; color: #856404; padding: 12px; border-radius: 6px; margin-bottom: 15px; font-size: 13px;">
                     ⚠️ 注意：每个组只能有一个组管理员，设置新组管理员会自动移除原组管理员权限。
@@ -1329,10 +1329,10 @@
             </div>
             <div class="modal-body">
                 <div class="operator-info" id="revokeOperatorInfo">
-                    <!-- 操作员信息将在这里动态显示 -->
+                    <!-- 成员信息将在这里动态显示 -->
                 </div>
                 <div style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 6px; margin-bottom: 15px; font-size: 13px;">
-                    ⚠️ 警告：移除组管理员权限后，该操作员将无法查看组内记录和签字确认。
+                    ⚠️ 警告：移除组管理员权限后，该成员将无法查看组内记录和签字确认。
                 </div>
                 <div class="form-group">
                     <label for="revokePassword">管理员密码确认</label>
@@ -1380,44 +1380,44 @@
 
         function confirmDeleteOperator(operatorName, groupName) {
             if (!hasDeletePermission()) {
-                alert('您没有权限删除操作员！需要删除权限。');
+                alert('您没有权限删除成员！需要删除权限。');
                 return false;
             }
             
             {% if current_user.is_superuser %}
-            return confirm(`确定要删除操作员 "${operatorName}" 吗？\n\n组名：${groupName}\n\n⚠️ 警告：您以超级管理员身份操作，可以删除被使用的操作员！`);
+            return confirm(`确定要删除成员 "${operatorName}" 吗？\n\n组名：${groupName}\n\n⚠️ 警告：您以超级管理员身份操作，可以删除被使用的成员！`);
             {% else %}
-            return confirm(`确定要删除操作员 "${operatorName}" 吗？\n\n组名：${groupName}\n\n注意：如果该操作员已被生产记录使用，删除可能导致数据不一致。`);
+            return confirm(`确定要删除成员 "${operatorName}" 吗？\n\n组名：${groupName}\n\n注意：如果该成员已被生产记录使用，删除可能导致数据不一致。`);
             {% endif %}
         }
 
         function confirmDeleteGroup(groupName, memberCount) {
             if (!hasDeletePermission()) {
-                alert('您没有权限删除操作员组！需要删除权限。');
+                alert('您没有权限删除成员组！需要删除权限。');
                 return false;
             }
             
             {% if current_user.is_superuser %}
             return confirm(`确定要删除整个组 "${groupName}" 吗？\n\n组内成员：${memberCount} 人\n\n⚠️ 警告：您以超级管理员身份操作，可以删除被使用的组！`);
             {% else %}
-            return confirm(`确定要删除整个组 "${groupName}" 吗？\n\n组内成员：${memberCount} 人\n\n警告：此操作将永久删除该组及其所有操作员，且不可恢复！`);
+            return confirm(`确定要删除整个组 "${groupName}" 吗？\n\n组内成员：${memberCount} 人\n\n警告：此操作将永久删除该组及其所有成员，且不可恢复！`);
             {% endif %}
         }
 
         // 显示重置密码模态框
         function showResetPasswordModal(operatorId, operatorName) {
             if (!hasUpdatePermission()) {
-                alert('您没有权限重置操作员密码！需要更新权限。');
+                alert('您没有权限重置成员密码！需要更新权限。');
                 return;
             }
             
             currentResetOperatorId = operatorId;
             currentResetOperatorName = operatorName;
             
-            // 更新模态框中的操作员信息
+            // 更新模态框中的成员信息
             document.getElementById('resetOperatorInfo').innerHTML = `
-                <div style="font-weight: 600; color: #1e3c72; margin-bottom: 5px;">操作员：${operatorName}</div>
-                <div style="font-size: 13px; color: #666;">请为该操作员设置新密码</div>
+                <div style="font-weight: 600; color: #1e3c72; margin-bottom: 5px;">成员：${operatorName}</div>
+                <div style="font-size: 13px; color: #666;">请为该成员设置新密码</div>
             `;
             
             document.getElementById('resetOperatorId').value = operatorId;
@@ -1486,9 +1486,9 @@
             document.getElementById('grantGroupName').value = groupName;
             
             document.getElementById('groupOwnerOperatorInfo').innerHTML = `
-                <div style="font-weight: 600; color: #1e3c72; margin-bottom: 5px;">操作员：${operatorName}</div>
+                <div style="font-weight: 600; color: #1e3c72; margin-bottom: 5px;">成员：${operatorName}</div>
                 <div style="color: #28a745; margin-bottom: 5px;">组名：${groupName}</div>
-                <div style="font-size: 13px; color: #666;">确认将该操作员设为组管理员？</div>
+                <div style="font-size: 13px; color: #666;">确认将该成员设为组管理员？</div>
             `;
             
             document.getElementById('grantGroupOwnerModal').style.display = 'flex';
@@ -1550,8 +1550,8 @@
             document.getElementById('revokeOperatorId').value = operatorId;
             
             document.getElementById('revokeOperatorInfo').innerHTML = `
-                <div style="font-weight: 600; color: #1e3c72; margin-bottom: 5px;">操作员：${operatorName}</div>
-                <div style="font-size: 13px; color: #666;">确认移除该操作员的组管理员权限？</div>
+                <div style="font-weight: 600; color: #1e3c72; margin-bottom: 5px;">成员：${operatorName}</div>
+                <div style="font-size: 13px; color: #666;">确认移除该成员的组管理员权限？</div>
             `;
             
             document.getElementById('revokeGroupOwnerModal').style.display = 'flex';

@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>操作员仪表板 - OpenPMS</title>
+    <title>成员仪表板 - OpenPMS</title>
     <style>
         * {
             margin: 0;
@@ -525,7 +525,7 @@
             background: #5a6268;
         }
 
-        /* 操作员列样式 */
+        /* 成员列样式 */
         .operator-cell {
             display: flex;
             flex-wrap: wrap;
@@ -577,7 +577,7 @@
 <body>
     <div class="header">
         <div class="header-top">
-            <h1>OpenPMS - 操作员面板</h1>
+            <h1>OpenPMS - 成员面板</h1>
             <div class="user-info">
                 <span>欢迎，{{ operator_name }}</span>
                 {% if is_group_owner %}
@@ -585,7 +585,7 @@
                     style="background: #ffc107; color: #333; padding: 4px 10px; border-radius: 12px; font-size: 12px;">组管理员</span>
                 {% else %}
                 <span
-                    style="background: #ffc107; color: #333; padding: 4px 10px; border-radius: 12px; font-size: 12px;">操作员</span>
+                    style="background: #ffc107; color: #333; padding: 4px 10px; border-radius: 12px; font-size: 12px;">成员</span>
                 {% endif %}
                 <a href="{{ url_for('logout') }}" class="btn-logout">退出登录</a>
             </div>
@@ -617,7 +617,7 @@
             </div>
             <div class="operator-info">
                 <div class="info-item">
-                    <div class="info-label">操作员姓名</div>
+                    <div class="info-label">成员姓名</div>
                     <div class="info-value">{{ operator_name }}</div>
                 </div>
                 <div class="info-item">
@@ -723,7 +723,7 @@
                                             {% endif %}
                                         {% endif %}
                                     {% else %}
-                                        <span style="color: #6c757d; font-size: 12px; font-weight: 500;">操作员</span>
+                                        <span style="color: #6c757d; font-size: 12px; font-weight: 500;">成员</span>
                                     {% endif %}
                                 </div>
                             </div>
@@ -753,7 +753,7 @@
                 <!-- 筛选器（仅组管理员显示） -->
                 {% if is_group_owner %}
                 <div class="filter-container">
-                    <span class="filter-label">筛选操作员:</span>
+                    <span class="filter-label">筛选成员:</span>
                     <select id="operatorFilter" class="filter-select">
                         <option value="all">全部</option>
                         <option value="{{ operator_name }}">自己 ({{ operator_name }})</option>
@@ -775,7 +775,7 @@
                             <th>工序</th>
                             <th>数量</th>
                             {% if is_group_owner %}
-                            <th>操作员</th>
+                            <th>成员</th>
                             {% endif %}
                             <th>备注</th>
                         </tr>
@@ -878,7 +878,7 @@
                 <p>4. 您作为组管理员，可以查看组内所有记录并使用筛选功能</p>
                 <p>5. 签字确认后，组内今日生产记录将被锁定</p>
                 <p>6. 您的签字代表全组成员确认今日生产记录</p>
-                <p>7. <strong>只有组管理员需要签字，普通操作员无需签字</strong></p>
+                <p>7. <strong>只有组管理员需要签字，普通成员无需签字</strong></p>
                 {% else %}
                 <p>4. 您的生产记录将由组管理员统一确认签字</p>
                 <p>5. 签字后记录将被锁定，无法修改</p>

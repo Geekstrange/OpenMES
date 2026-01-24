@@ -394,7 +394,7 @@
             background: rgba(255, 255, 255, 0.1);
         }
 
-        /* 组别+操作员 同行布局 */
+        /* 组别+成员 同行布局 */
         .operator-group-row {
             display: flex;
             gap: 25px;
@@ -457,7 +457,7 @@
             {% endif %}
 
             {% if has_perm('manage_operator') %}
-            <a href="{{ url_for('operator_list') }}" class="nav-btn">操作员管理</a>
+            <a href="{{ url_for('operator_list') }}" class="nav-btn">成员管理</a>
             {% endif %}
 
             {% if has_perm('manage_users') %}
@@ -517,7 +517,7 @@
                         </div>
                     </div>
 
-                    <!-- 组别+操作员 同行布局 -->
+                    <!-- 组别+成员 同行布局 -->
                     <div class="operator-group-row">
                         <!-- 一级下拉：选择组 -->
                         <div class="form-group">
@@ -532,18 +532,18 @@
                             </div>
                         </div>
 
-                        <!-- 二级下拉：多选操作员（根据组联动） -->
+                        <!-- 二级下拉：多选成员（根据组联动） -->
                         <div class="form-group">
-                            <label class="required">操作员</label>
+                            <label class="required">成员</label>
                             <div class="group-select-wrapper">
                                 <select name="operator" id="operator-select" class="group-select" multiple required>
                                     <option value="">请先选择组别</option>
                                 </select>
                             </div>
                             <div class="multiple-tip">
-                                提示：按住 Ctrl 键可多选操作员，按住 Shift 键可连续选择
+                                提示：按住 Ctrl 键可多选成员，按住 Shift 键可连续选择
                             </div>
-                            <div id="operator-count" class="selection-count" style="display: none;">已选择 0 名操作员</div>
+                            <div id="operator-count" class="selection-count" style="display: none;">已选择 0 名成员</div>
                         </div>
                     </div>
 
@@ -596,7 +596,7 @@
             select.style.height = newHeight + 'px';
         }
 
-        // 更新已选操作员计数
+        // 更新已选成员计数
         function updateOperatorCount() {
             const operatorSelect = document.getElementById('operator-select');
             const selectedOperators = Array.from(operatorSelect.selectedOptions)
@@ -607,14 +607,14 @@
                 // 如果有选择操作或者用户已交互，则显示
                 if (selectedOperators.length > 0 || hasUserInteracted) {
                     countElement.style.display = 'block';
-                    countElement.textContent = `已选择 ${selectedOperators.length} 名操作员`;
+                    countElement.textContent = `已选择 ${selectedOperators.length} 名成员`;
                 } else {
                     countElement.style.display = 'none';
                 }
             }
         }
 
-        // 更新操作员下拉框的函数
+        // 更新成员下拉框的函数
         function updateOperatorSelect() {
             const selectedGroup = groupSelect.value;
             operatorSelect.innerHTML = '';
@@ -636,7 +636,7 @@
                     hintOption.style.fontStyle = 'italic';
                     hintOption.style.color = '#666';
                     hintOption.style.backgroundColor = '#f8f9fa';
-                    hintOption.textContent = `共 ${operators.length} 名操作员`;
+                    hintOption.textContent = `共 ${operators.length} 名成员`;
                     operatorSelect.appendChild(hintOption);
                     
                     // 重置用户交互状态
@@ -650,7 +650,7 @@
                 } else {
                     const option = document.createElement('option');
                     option.value = '';
-                    option.textContent = '该组暂无操作员';
+                    option.textContent = '该组暂无成员';
                     operatorSelect.appendChild(option);
                     updateOperatorCount();
                 }
@@ -748,7 +748,7 @@
                     groupSelect.appendChild(hintOption);
                 }
 
-                // 如果只有一个组，自动选中并更新操作员
+                // 如果只有一个组，自动选中并更新成员
                 if (displayGroups.length === 1) {
                     groupSelect.value = displayGroups[0];
                     updateOperatorSelect(); // 直接调用函数而不是触发事件
@@ -758,7 +758,7 @@
                 updateNextProcessSelect(selectedProcess);
             }
 
-            // 如果没有选中组，清空操作员选择
+            // 如果没有选中组，清空成员选择
             if (!groupSelect.value) {
                 operatorSelect.innerHTML = '<option value="">请先选择组别</option>';
             }
@@ -840,7 +840,7 @@
                 processSelect.dispatchEvent(new Event('change'));
             }
 
-            // 新增：初始化操作员下拉框监听器
+            // 新增：初始化成员下拉框监听器
             setupOperatorSelectListeners();
             
             // 页面加载后调整一次多选下拉框高度
@@ -863,7 +863,7 @@
 
             if (selectedOperators.length === 0) {
                 e.preventDefault();
-                alert('请至少选择一名操作员');
+                alert('请至少选择一名成员');
                 operatorSelect.focus();
                 return false;
             }
@@ -909,7 +909,7 @@
                 document.getElementById('next-process-select').innerHTML = '<option value="">请选择下一工序（可选）</option>';
                 document.getElementById('group-select').selectedIndex = 0;
 
-                // 清空操作员选择
+                // 清空成员选择
                 const operatorSelect = document.getElementById('operator-select');
                 operatorSelect.innerHTML = '';
                 const defaultOption = document.createElement('option');
@@ -931,7 +931,7 @@
                 const countElement = document.getElementById('operator-count');
                 if (countElement) {
                     countElement.style.display = 'none';
-                    countElement.textContent = '已选择 0 名操作员';
+                    countElement.textContent = '已选择 0 名成员';
                 }
 
                 // 聚焦到产品代码输入框

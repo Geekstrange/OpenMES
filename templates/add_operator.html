@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>添加操作员 - OpenPMS</title>
+    <title>添加成员 - OpenPMS</title>
     <style>
         * {
             margin: 0;
@@ -470,8 +470,8 @@
             {% endif %}
 
             {% if has_perm('manage_operator') %}
-            <a href="{{ url_for('operator_list') }}" class="nav-btn active">操作员管理 <span
-                    class="edit-indicator">添加操作员</span></a>
+            <a href="{{ url_for('operator_list') }}" class="nav-btn active">成员管理 <span
+                    class="edit-indicator">添加成员</span></a>
             {% endif %}
 
             {% if has_perm('manage_users') %}
@@ -498,7 +498,7 @@
 
         <!-- 页面标题和操作区域 -->
         <div class="page-header">
-            <div class="page-title">添加操作员</div>
+            <div class="page-title">添加成员</div>
             <div class="action-buttons">
                 <a href="{{ url_for('operator_list') }}" class="btn btn-back">← 返回列表</a>
             </div>
@@ -507,9 +507,9 @@
         <!-- 表单卡片 -->
         <div class="card">
             <div class="card-header">
-                操作员信息
+                成员信息
                 <span style="font-size: 13px; font-weight: normal; margin-left: 10px; opacity: 0.9;">
-                    批量添加操作员到指定组
+                    批量添加成员到指定组
                 </span>
             </div>
 
@@ -535,7 +535,7 @@
 
                         <!-- 第二行：密码 -->
                         <div class="form-group">
-                            <label class="form-label">操作员密码</label>
+                            <label class="form-label">成员密码</label>
                             <div class="input-with-icon">
                                 <input type="password" name="password" id="password" class="form-control" 
                                        placeholder="留空使用默认密码(000000)"
@@ -549,20 +549,20 @@
                                 </div>
                             </div>
                             <div class="form-help">
-                                提示：如留空，密码将设置为"000000"，操作员可以登录后自行修改
+                                提示：如留空，密码将设置为"000000"，成员可以登录后自行修改
                             </div>
                         </div>
                     </div>
 
-                    <!-- 第二行：操作员名称（全宽） -->
+                    <!-- 第二行：成员名称（全宽） -->
                     <div class="form-row">
                         <div class="form-group form-group-full">
-                            <label class="form-label required">操作员名称</label>
+                            <label class="form-label required">成员名称</label>
                             <textarea name="operator_names" class="form-textarea" required
-                                placeholder="输入操作员名称，可以用逗号、空格或换行分隔多个名称"
+                                placeholder="输入成员名称，可以用逗号、空格或换行分隔多个名称"
                                 id="operator-names"></textarea>
                             <div class="form-hint">
-                                支持同时添加多个操作员，用逗号、空格或换行分隔
+                                支持同时添加多个成员，用逗号、空格或换行分隔
                             </div>
                             <div class="example-text">
                                 <strong>输入示例：</strong><br>
@@ -578,7 +578,7 @@
                     </div>
 
                     <div class="form-actions">
-                        <button type="submit" class="btn btn-submit">保存操作员</button>
+                        <button type="submit" class="btn btn-submit">保存成员</button>
                         <a href="{{ url_for('operator_list') }}" class="btn btn-back">取消</a>
                     </div>
                 </form>
@@ -589,14 +589,14 @@
         <div
             style="background: #e8f4fd; color: #004085; padding: 15px; border-radius: 6px; border-left: 4px solid #007bff; margin-top: 20px;">
             <div style="font-weight: 600; margin-bottom: 5px; display: flex; align-items: center; gap: 8px;">
-                <span>💡</span> 操作员创建指南
+                <span>💡</span> 成员创建指南
             </div>
             <div style="font-size: 13px; line-height: 1.5;">
-                <p>1. 组名用于对操作员进行分类管理，例如"焊接组"、"装配组"、"检验组"等。</p>
-                <p>2. 可以批量添加操作员，系统会自动解析分隔符并创建多个操作员。</p>
-                <p>3. 操作员名称应使用真实姓名或工号，便于在生产记录中选择。</p>
-                <p>4. 如果组名已存在，新操作员将被添加到该组中。</p>
-                <p>5. 密码默认为"000000"，操作员首次登录后建议修改密码。</p>
+                <p>1. 组名用于对成员进行分类管理，例如"焊接组"、"装配组"、"检验组"等。</p>
+                <p>2. 可以批量添加成员，系统会自动解析分隔符并创建多个成员。</p>
+                <p>3. 成员名称应使用真实姓名或工号，便于在生产记录中选择。</p>
+                <p>4. 如果组名已存在，新成员将被添加到该组中。</p>
+                <p>5. 密码默认为"000000"，成员首次登录后建议修改密码。</p>
                 <p>6. 建议设置强密码，包含字母、数字和特殊字符。</p>
             </div>
         </div>
@@ -725,10 +725,10 @@
                     return false;
                 }
                 
-                // 操作员名称验证
+                // 成员名称验证
                 if (!operatorNamesValue) {
                     e.preventDefault();
-                    alert('请填写操作员名称！');
+                    alert('请填写成员名称！');
                     operatorNames.focus();
                     return false;
                 }
@@ -745,7 +745,7 @@
                 
                 // 确认提交
                 const operatorCount = operatorNamesValue.split(/[, \n]+/).filter(name => name.trim().length > 0).length;
-                if (!confirm(`确定要添加 ${operatorCount} 个操作员吗？`)) {
+                if (!confirm(`确定要添加 ${operatorCount} 个成员吗？`)) {
                     e.preventDefault();
                     return false;
                 }

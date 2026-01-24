@@ -1080,7 +1080,7 @@
 			{% endif %}
 
 			{% if has_perm('manage_operator') %}
-			<a href="{{ url_for('operator_list') }}" class="nav-btn">操作员管理</a>
+			<a href="{{ url_for('operator_list') }}" class="nav-btn">成员管理</a>
 			{% endif %}
 
 			{% if has_perm('manage_users') %}
@@ -1113,9 +1113,9 @@
 							placeholder="输入生产工序">
 					</div>
 					<div class="search-group">
-						<label class="search-label">操作员</label>
+						<label class="search-label">成员</label>
 						<input type="text" name="search_operator" value="{{ search_operator }}" class="search-input"
-							placeholder="输入操作员姓名">
+							placeholder="输入成员姓名">
 					</div>
 					<div class="search-group">
 						<label class="search-label">创建者</label>
@@ -1175,7 +1175,7 @@
 				<div class="stat-number" id="process-count">{{ process_count }}</div>
 			</div>
 			<div class="stat-card">
-				<div class="stat-title">参与操作员</div>
+				<div class="stat-title">参与成员</div>
 				<div class="stat-number" id="operator-count">{{ operator_count }}</div>
 			</div>
 		</div>
@@ -1246,7 +1246,7 @@
 			<div class="chart-box">
 				<div class="chart-title">
 					<div style="display: flex; justify-content: space-between; align-items: center;">
-						<span>操作员产量排名</span>
+						<span>成员产量排名</span>
 						<div class="filter-controls">
 							<select id="operatorProcessSelect" class="filter-select">
 								<option value="all">所有工序</option> {% for process in process_list %} <option
@@ -1271,7 +1271,7 @@
 						<th>工序名称</th>
 						<th>产品种类</th>
 						<th>总产量</th>
-						<th>操作员人数</th>
+						<th>成员人数</th>
 						<th>平均每人产量</th>
 						<th>最高产量产品</th>
 					</tr>
@@ -1299,7 +1299,7 @@
 						<th>生产工序</th>
 						<th>下一工序</th>
 						<th>生产数量</th>
-						<th>操作员</th>
+						<th>成员</th>
 						<th>备注</th>
 						<th>创建者</th>
 						<th>创建时间</th>
@@ -2212,7 +2212,7 @@
 					return chartInstance;
 				}
 
-				// 加载操作员图表 - 修复hover问题
+				// 加载成员图表 - 修复hover问题
 				function loadOperatorChart(period, process) {
 					// 清除之前的空状态
 					clearEmptyState(operatorChartContainer);
@@ -2242,7 +2242,7 @@
 						.then(response => response.json())
 						.then(data => {
 							if (data.operator_labels && data.operator_labels.length > 0) {
-								// 过滤掉产量为零的操作员
+								// 过滤掉产量为零的成员
 								const combined = data.operator_labels
 									.map((label, index) => ({
 										label,
@@ -2359,7 +2359,7 @@
 											y: {
 												title: {
 													display: true,
-													text: process === 'all' ? '操作员' : '操作员',
+													text: process === 'all' ? '成员' : '成员',
 													font: {
 														size: 14,
 														weight: 'bold'
@@ -2464,11 +2464,11 @@
 								adjustChartHeights();
 
 							} else {
-								showEmptyState(operatorChartContainer, '该时间段内暂无操作员生产数据');
+								showEmptyState(operatorChartContainer, '该时间段内暂无成员生产数据');
 							}
 						})
 						.catch(error => {
-							console.error('加载操作员图表失败:', error);
+							console.error('加载成员图表失败:', error);
 							showEmptyState(operatorChartContainer, '加载数据失败，请刷新页面重试');
 						});
 				}

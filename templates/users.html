@@ -531,7 +531,7 @@
             {% endif %}
 
             {% if has_perm('manage_operator') %}
-            <a href="{{ url_for('operator_list') }}" class="nav-btn">操作员管理</a>
+            <a href="{{ url_for('operator_list') }}" class="nav-btn">成员管理</a>
             {% endif %}
 
             {% if has_perm('manage_users') %}
@@ -602,7 +602,7 @@
                         </span>
                         {% endif %}
                         {% if current_user.has_permission('operator_management') %}
-                        <span class="permission-badge">👷操作员管理
+                        <span class="permission-badge">👷成员管理
                             <span class="permission-value">{{ current_user.permissions.get('operator_management', 0) }}</span>
                         </span>
                         {% endif %}

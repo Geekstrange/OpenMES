@@ -679,7 +679,7 @@
             {% endif %}
 
             {% if has_perm('manage_operator') %}
-            <a href="{{ url_for('operator_list') }}" class="nav-btn">操作员管理</a>
+            <a href="{{ url_for('operator_list') }}" class="nav-btn">成员管理</a>
             {% endif %}
 
             {% if has_perm('manage_users') %}
@@ -804,7 +804,7 @@
                                     </span>
                                     {% endif %}
                                     
-                                    <!-- 关联操作员组按钮 -->
+                                    <!-- 关联成员组按钮 -->
                                     {% if current_user.has_permission('process_management', 'advanced') %}
                                     <a href="#" class="btn btn-link" data-process-id="{{ process.id }}" data-process-name="{{ process.process_name }}">
                                         🔗 关联组
@@ -847,7 +847,7 @@
                 <p>1. 删除工序前请确保没有生产记录正在使用该工序，否则可能导致数据不一致。</p>
                 <p>2. 工序名称应简洁明了，便于在生产记录中选择。</p>
                 <p>3. 建议按照生产流程的顺序命名工序，如"焊接1"、"装配2"、"涂装3"。</p>
-                <p>4. 使用"🔗 关联组"功能可以为工序关联操作员组，这样在添加记录时会自动筛选相关组。</p>
+                <p>4. 使用"🔗 关联组"功能可以为工序关联成员组，这样在添加记录时会自动筛选相关组。</p>
                 <p>5. 使用"⏭️ 下工序"功能可以为工序关联后续工序，这样在添加记录时会自动筛选相关的下工序。</p>
                 {% if current_user and current_user.is_superuser %}
                 <p style="color: #dc3545; font-weight: 600;">⚠️ 您当前以超级管理员身份登录，可以删除被使用的工序。</p>
@@ -872,7 +872,7 @@
                 </div>
                 
                 <div style="margin-bottom: 15px; font-size: 13px; color: #666;">
-                    提示：选择该工序对应的操作员组，生产记录中将只显示关联的组
+                    提示：选择该工序对应的成员组，生产记录中将只显示关联的组
                 </div>
                 
                 <div id="groupsContainer" style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 10px;">
@@ -941,7 +941,7 @@
             });
         });
 
-        // 全局变量存储操作员组数据
+        // 全局变量存储成员组数据
         const operatorGroups = {{ operator_groups|tojson }};
         
         // 关联管理功能
@@ -981,9 +981,9 @@
                     if (allGroups.length === 0) {
                         container.innerHTML = `
                             <div class="empty-groups">
-                                <div>暂无操作员组数据</div>
+                                <div>暂无成员组数据</div>
                                 <div style="font-size: 12px; margin-top: 10px;">
-                                    请先在"操作员管理"中添加操作员组
+                                    请先在"成员管理"中添加成员组
                                 </div>
                             </div>
                         `;
@@ -999,7 +999,7 @@
                                 <label>
                                     <input type="checkbox" name="group" value="${group}" ${isChecked ? 'checked' : ''}>
                                     <span class="group-name">${group}</span>
-                                    <span class="group-count" title="组内操作员数量">
+                                    <span class="group-count" title="组内成员数量">
                                         ${operatorCount}人
                                     </span>
                                 </label>

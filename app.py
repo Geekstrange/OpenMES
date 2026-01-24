@@ -44,7 +44,8 @@ db = SQLAlchemy(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
-login_manager.login_message = '登录以继续访问页面'
+login_manager.login_message = '登录以继续访问'
+login_manager.login_message_category = 'warning'
 
 # -------------------------- 辅助函数 --------------------------
 def save_signature_image(base64_data, operator_id):
@@ -410,6 +411,213 @@ class OperatorGroup(db.Model):
             return password == '000000'
         return check_password_hash(self.password_hash, password)
 
+# -------------------------- 数据模型（续） --------------------------
+class ProductionLog(db.Model):
+    """系统日志模型"""
+    __tablename__ = 'production_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    log_type = db.Column(db.String(50), nullable=False)  # 日志类型
+    action = db.Column(db.String(100), nullable=False)   # 具体操作
+    user_type = db.Column(db.String(20), nullable=False) # 用户类型
+    user_id = db.Column(db.Integer, nullable=True)       # 用户ID
+    username = db.Column(db.String(100), nullable=False) # 用户名
+    target_id = db.Column(db.Integer, nullable=True)     # 目标ID
+    target_info = db.Column(db.Text, nullable=True)      # 目标信息（JSON）
+    ip_address = db.Column(db.String(45), nullable=True) # IP地址
+    user_agent = db.Column(db.Text, nullable=True)       # 浏览器信息
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    
+    # 日志类型常量
+    LOG_TYPES = {
+        'login_logout': '登录登出',
+        'record': '生产记录',
+        'process': '工序管理',
+        # 'operator': '操作员管理',
+        'operator': '成员管理',
+        'user': '用户管理',
+        'backup': '备份管理',
+        'system': '系统操作'
+    }
+    
+    # 操作类型常量
+    ACTIONS = {
+        'login': '登录',
+        'logout': '登出',
+        'add': '添加',
+        'edit': '编辑',
+        'delete': '删除',
+        'backup': '备份',
+        'restore': '恢复',
+        'reset_password': '重置密码',
+        'grant_owner': '授权组管理员',
+        'revoke_owner': '移除组管理员',
+        'link_groups': '关联组',
+        'link_next_processes': '关联下工序',
+        'sign': '签字确认'
+    }
+    
+    @classmethod
+    def get_action_display(cls, action):
+        """获取操作的中文显示"""
+        return cls.ACTIONS.get(action, action)
+    
+    @classmethod
+    def get_log_type_display(cls, log_type):
+        """获取日志类型的中文显示"""
+        return cls.LOG_TYPES.get(log_type, log_type)
+    
+    def get_target_info_dict(self):
+        """获取目标信息的字典格式"""
+        if self.target_info:
+            try:
+                return json.loads(self.target_info)
+            except:
+                return {}
+        return {}
+
+# -------------------------- 日志相关辅助函数 --------------------------
+def log_activity(log_type, action, user_type, user_id, username, 
+                 target_id=None, target_info=None, request=None):
+    """
+    记录系统日志
+    
+    Args:
+        log_type: 日志类型
+        action: 操作类型
+        user_type: 用户类型 (admin/operator)
+        user_id: 用户ID
+        username: 用户名
+        target_id: 操作目标ID
+        target_info: 操作目标信息（字典）
+        request: Flask请求对象
+    """
+    try:
+        ip_address = None
+        user_agent = None
+        
+        if request:
+            ip_address = request.remote_addr
+            user_agent = request.user_agent.string
+        
+        # 将目标信息转为JSON字符串
+        target_info_str = None
+        if target_info:
+            target_info_str = json.dumps(target_info, ensure_ascii=False)
+        
+        # 创建日志记录
+        log = ProductionLog(
+            log_type=log_type,
+            action=action,
+            user_type=user_type,
+            user_id=user_id,
+            username=username,
+            target_id=target_id,
+            target_info=target_info_str,
+            ip_address=ip_address,
+            user_agent=user_agent
+        )
+        
+        db.session.add(log)
+        db.session.commit()
+        
+        # 同时写入文件日志
+        write_file_log(log)
+        
+        # 检查并归档旧日志
+        archive_old_logs()
+        
+    except Exception as e:
+        app.logger.error(f"记录日志失败: {str(e)}")
+        db.session.rollback()
+
+def write_file_log(log):
+    """写入文件日志"""
+    try:
+        log_dir = 'logs/'
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir, exist_ok=True)
+        
+        # 按日期创建日志文件
+        log_date = log.created_at.strftime('%Y-%m-%d')
+        log_file = os.path.join(log_dir, f'system_{log_date}.log')
+        
+        # 格式化日志内容
+        log_entry = f"{log.created_at.strftime('%Y-%m-%d %H:%M:%S')} | " \
+                   f"{ProductionLog.get_log_type_display(log.log_type)} | " \
+                   f"{ProductionLog.get_action_display(log.action)} | " \
+                   f"用户: {log.username} ({log.user_type}) | " \
+                   f"IP: {log.ip_address or 'N/A'}\n"
+        
+        # 写入文件
+        with open(log_file, 'a', encoding='utf-8') as f:
+            f.write(log_entry)
+            
+    except Exception as e:
+        app.logger.error(f"写入文件日志失败: {str(e)}")
+
+def archive_old_logs():
+    """归档一周前的日志"""
+    try:
+        # 计算一周前的日期
+        one_week_ago = datetime.now() - timedelta(days=7)
+        
+        # 查询一周前的日志
+        old_logs = ProductionLog.query.filter(
+            ProductionLog.created_at < one_week_ago
+        ).all()
+        
+        if old_logs:
+            # 按日期分组
+            logs_by_date = {}
+            for log in old_logs:
+                date_str = log.created_at.strftime('%Y-%m-%d')
+                if date_str not in logs_by_date:
+                    logs_by_date[date_str] = []
+                logs_by_date[date_str].append(log)
+            
+            # 归档目录
+            archive_dir = 'logs/archive/'
+            if not os.path.exists(archive_dir):
+                os.makedirs(archive_dir, exist_ok=True)
+            
+            # 归档每个日期的日志
+            for date_str, logs in logs_by_date.items():
+                archive_file = os.path.join(archive_dir, f'logs_{date_str}.json')
+                
+                # 准备归档数据
+                archive_data = []
+                for log in logs:
+                    archive_data.append({
+                        'id': log.id,
+                        'log_type': log.log_type,
+                        'action': log.action,
+                        'user_type': log.user_type,
+                        'user_id': log.user_id,
+                        'username': log.username,
+                        'target_id': log.target_id,
+                        'target_info': log.target_info,
+                        'ip_address': log.ip_address,
+                        'user_agent': log.user_agent,
+                        'created_at': log.created_at.strftime('%Y-%m-%d %H:%M:%S')
+                    })
+                
+                # 写入归档文件
+                with open(archive_file, 'w', encoding='utf-8') as f:
+                    json.dump(archive_data, f, ensure_ascii=False, indent=2)
+                
+                # 删除数据库中的日志记录
+                for log in logs:
+                    db.session.delete(log)
+                
+                app.logger.info(f"已归档 {len(logs)} 条日志到 {archive_file}")
+            
+            db.session.commit()
+            
+    except Exception as e:
+        app.logger.error(f"归档日志失败: {str(e)}")
+        db.session.rollback()
+
 # -------------------------- 辅助函数 --------------------------
 @app.context_processor
 def inject_permissions():
@@ -698,6 +906,17 @@ def login():
         if user and user.check_password(password):
             login_user(user)
             flash(f'欢迎 {username} 登录！', 'success')
+            
+            # 记录登录日志
+            log_activity(
+                log_type='login_logout',
+                action='login',
+                user_type='admin',
+                user_id=user.id,
+                username=username,
+                request=request
+            )
+            
             return redirect(url_for('index'))
 
         # 尝试操作员登录
@@ -714,6 +933,16 @@ def login():
                 # 更新最后登录时间
                 operator.last_login = datetime.now()
                 db.session.commit()
+                
+                # 记录操作员登录日志
+                log_activity(
+                    log_type='login_logout',
+                    action='login',
+                    user_type='operator',
+                    user_id=operator.id,
+                    username=operator.operator_name,
+                    request=request
+                )
                 
                 # 检查是否是默认密码，提示修改
                 if not operator.password_hash or password == '000000':
@@ -734,12 +963,33 @@ def login():
 @app.route('/logout')
 def logout():
     """统一登出函数，处理用户和操作员登出"""
+    username = None
+    user_type = None
+    user_id = None
+    
     if current_user.is_authenticated:
+        username = current_user.username
+        user_type = 'admin'
+        user_id = current_user.id
         logout_user()
         flash('已安全退出登录', 'success')
     elif session.get('operator_logged_in'):
+        username = session.get('operator_name')
+        user_type = 'operator'
+        user_id = session.get('operator_id')
         session.clear()
         flash('操作员已退出登录', 'success')
+    
+    # 记录登出日志
+    if username:
+        log_activity(
+            log_type='login_logout',
+            action='logout',
+            user_type=user_type,
+            user_id=user_id,
+            username=username,
+            request=request
+        )
     
     return redirect(url_for('login'))
 
@@ -983,6 +1233,25 @@ def add_record():
         db.session.add(new_record)
         try:
             db.session.commit()
+            
+            # 记录添加日志
+            log_activity(
+                log_type='record',
+                action='add',
+                user_type='admin',
+                user_id=current_user.id,
+                username=current_user.username,
+                target_id=new_record.id,
+                target_info={
+                    'product_code': product_code,
+                    'process': process,
+                    'number': int(number),
+                    'operators': operator_str,
+                    'creator': current_user.username
+                },
+                request=request
+            )
+            
             flash(f'生产记录 [{product_code}] 添加成功！', 'success')
 
             # 保持表单清空状态
@@ -1079,6 +1348,16 @@ def edit_record(id):
                                  process_next_links=process_next_links,
                                  selected_operators=selected_operators)
 
+        # 保存旧数据用于日志
+        old_data = {
+            'product_code': record.product_code,
+            'process': record.process,
+            'next_process': record.next_process,
+            'number': record.number,
+            'operators': record.operators,
+            'note': record.note
+        }
+        
         record.product_code = product_code
         record.process = process
         record.next_process = next_process if next_process else None
@@ -1089,6 +1368,29 @@ def edit_record(id):
 
         try:
             db.session.commit()
+            
+            # 记录编辑日志
+            log_activity(
+                log_type='record',
+                action='edit',
+                user_type='admin',
+                user_id=current_user.id,
+                username=current_user.username,
+                target_id=record.id,
+                target_info={
+                    'old_data': old_data,
+                    'new_data': {
+                        'product_code': product_code,
+                        'process': process,
+                        'next_process': next_process,
+                        'number': int(number),
+                        'operators': operator_str,
+                        'note': note
+                    }
+                },
+                request=request
+            )
+            
             flash('生产记录更新成功！', 'success')
             return redirect(url_for('index'))
         except Exception as e:
@@ -1206,8 +1508,31 @@ def delete_record(id):
         return redirect(url_for('index'))
 
     try:
+        # 保存删除前的数据用于日志
+        deleted_data = {
+            'product_code': record.product_code,
+            'process': record.process,
+            'number': record.number,
+            'operators': record.operators,
+            'creator': record.creator,
+            'create_time': record.create_time.strftime('%Y-%m-%d %H:%M:%S')
+        }
+        
         db.session.delete(record)
         db.session.commit()
+        
+        # 记录删除日志
+        log_activity(
+            log_type='record',
+            action='delete',
+            user_type='admin',
+            user_id=current_user.id,
+            username=current_user.username,
+            target_id=id,
+            target_info=deleted_data,
+            request=request
+        )
+        
         flash(f'生产记录 [{record.product_code}] 已删除！', 'success')
     except Exception as e:
         db.session.rollback()
@@ -1317,6 +1642,19 @@ def add_process():
         db.session.add(new_process)
         try:
             db.session.commit()
+            
+            # 记录添加工序日志
+            log_activity(
+                log_type='process',
+                action='add',
+                user_type='admin',
+                user_id=current_user.id,
+                username=current_user.username,
+                target_id=new_process.id,
+                target_info={'process_name': process_name},
+                request=request
+            )
+            
             flash(f'工序 "{process_name}" 添加成功！', 'success')
             return redirect(url_for('process_list'))
         except Exception as e:
@@ -1333,6 +1671,31 @@ def delete_process(id):
     """删除工序"""
     process = db.session.get(ProcessOption, int(id))
     
+    if not process:
+        flash('工序不存在！', 'danger')
+        return redirect(url_for('process_list'))
+    
+    # 保存删除前的完整数据
+    try:
+        linked_groups = json.loads(process.linked_groups) if process.linked_groups else []
+    except:
+        linked_groups = []
+    
+    try:
+        linked_next_processes = json.loads(process.linked_next_processes) if process.linked_next_processes else []
+    except:
+        linked_next_processes = []
+    
+    deleted_data = {
+        'process_name': process.process_name,
+        'linked_groups': linked_groups,
+        'linked_next_processes': linked_next_processes,
+        'create_time': process.create_time.strftime('%Y-%m-%d %H:%M:%S'),
+        'update_time': process.update_time.strftime('%Y-%m-%d %H:%M:%S'),
+        'total_groups': len(linked_groups),
+        'total_next_processes': len(linked_next_processes)
+    }
+    
     # 超级管理员不受限制，可以删除被使用的工序
     if not current_user.is_superuser:
         # 检查是否有生产记录在使用此工序
@@ -1345,6 +1708,19 @@ def delete_process(id):
         # 删除工序
         db.session.delete(process)
         db.session.commit()
+        
+        # 记录删除工序日志（已包含关联信息）
+        log_activity(
+            log_type='process',
+            action='delete',
+            user_type='admin',
+            user_id=current_user.id,
+            username=current_user.username,
+            target_id=id,
+            target_info=deleted_data,
+            request=request
+        )
+        
         flash(f'工序 "{process.process_name}" 已删除！', 'success')
     except Exception as e:
         db.session.rollback()
@@ -1379,8 +1755,20 @@ def link_process_groups(id):
     """为工序关联操作员组"""
     process = db.session.get(ProcessOption, int(id))
     
+    if not process:
+        flash('工序不存在！', 'danger')
+        return redirect(url_for('process_list'))
+    
     # 获取前端传递的组列表
     selected_groups = request.form.getlist('groups')
+    
+    # 获取关联前的组列表
+    old_linked_groups = []
+    if process.linked_groups:
+        try:
+            old_linked_groups = json.loads(process.linked_groups)
+        except:
+            old_linked_groups = []
     
     try:
         # 更新工序的关联组
@@ -1388,6 +1776,29 @@ def link_process_groups(id):
         process.update_time = datetime.now()
         
         db.session.commit()
+        
+        # 记录工序关联组日志
+        log_activity(
+            log_type='process',
+            action='edit',
+            user_type='admin',
+            user_id=current_user.id,
+            username=current_user.username,
+            target_id=process.id,
+            target_info={
+                'process_name': process.process_name,
+                'operation': 'link_groups',
+                'old_linked_groups': old_linked_groups,
+                'new_linked_groups': selected_groups,
+                'changes': {
+                    'added': list(set(selected_groups) - set(old_linked_groups)),
+                    'removed': list(set(old_linked_groups) - set(selected_groups))
+                },
+                'total_groups': len(selected_groups)
+            },
+            request=request
+        )
+        
         flash(f'工序 "{process.process_name}" 已成功关联 {len(selected_groups)} 个操作员组', 'success')
     except Exception as e:
         db.session.rollback()
@@ -1429,8 +1840,20 @@ def link_process_next(id):
     """为工序关联下工序"""
     process = db.session.get(ProcessOption, int(id))
     
+    if not process:
+        flash('工序不存在！', 'danger')
+        return redirect(url_for('process_list'))
+    
     # 获取前端传递的下工序列表
     selected_next_processes = request.form.getlist('next_processes')
+    
+    # 获取关联前的下工序列表
+    old_linked_next = []
+    if process.linked_next_processes:
+        try:
+            old_linked_next = json.loads(process.linked_next_processes)
+        except:
+            old_linked_next = []
     
     try:
         # 更新工序的关联下工序
@@ -1438,6 +1861,29 @@ def link_process_next(id):
         process.update_time = datetime.now()
         
         db.session.commit()
+        
+        # 记录工序关联下工序日志
+        log_activity(
+            log_type='process',
+            action='edit',
+            user_type='admin',
+            user_id=current_user.id,
+            username=current_user.username,
+            target_id=process.id,
+            target_info={
+                'process_name': process.process_name,
+                'operation': 'link_next_processes',
+                'old_linked_next': old_linked_next,
+                'new_linked_next': selected_next_processes,
+                'changes': {
+                    'added': list(set(selected_next_processes) - set(old_linked_next)),
+                    'removed': list(set(old_linked_next) - set(selected_next_processes))
+                },
+                'total_next_processes': len(selected_next_processes)
+            },
+            request=request
+        )
+        
         flash(f'工序 "{process.process_name}" 已成功关联 {len(selected_next_processes)} 个下工序', 'success')
     except Exception as e:
         db.session.rollback()
@@ -1599,6 +2045,26 @@ def add_user():
         db.session.add(new_user)
         try:
             db.session.commit()
+            
+            # 记录添加用户日志
+            log_activity(
+                log_type='user',
+                action='add',
+                user_type='admin',
+                user_id=current_user.id,
+                username=current_user.username,
+                target_id=new_user.id,
+                target_info={
+                    'username': username,
+                    'user_level': user_level,
+                    'user_level_display': User.LEVEL_NAMES_ZH.get(user_level, '普通用户'),
+                    'granted_by': current_user.username,
+                    'has_permissions': bool(permissions),
+                    'permissions_summary': {module: value for module, value in permissions.items() if value > 0}
+                },
+                request=request
+            )
+            
             flash(f'用户 [{username}] 添加成功！', 'success')
             return redirect(url_for('user_list'))
         except Exception as e:
@@ -1627,6 +2093,13 @@ def edit_user(id):
         username = request.form.get('username')
         password = request.form.get('password')
         user_level = int(request.form.get('user_level', 0))
+        
+        # 保存编辑前的数据用于日志
+        old_data = {
+            'username': user.username,
+            'user_level': user.user_level,
+            'permissions': user.permissions.copy() if user.permissions else {}
+        }
         
         # 用户名不能重复（除非是自己）
         if username != user.username:
@@ -1724,6 +2197,29 @@ def edit_user(id):
         
         try:
             db.session.commit()
+            
+            # 记录编辑用户日志
+            log_activity(
+                log_type='user',
+                action='edit',
+                user_type='admin',
+                user_id=current_user.id,
+                username=current_user.username,
+                target_id=user.id,
+                target_info={
+                    'old_data': old_data,
+                    'new_data': {
+                        'username': username,
+                        'user_level': user_level,
+                        'user_level_display': User.LEVEL_NAMES_ZH.get(user_level, '普通用户'),
+                        'permissions': permissions,
+                        'granted_by': current_user.username,
+                        'password_changed': bool(password)
+                    }
+                },
+                request=request
+            )
+            
             flash(f'用户 {username} 已更新', 'success')
             return redirect(url_for('user_list'))
         except Exception as e:
@@ -1749,14 +2245,44 @@ def delete_user(id):
     
     user = db.session.get(User, int(id))
     
+    if not user:
+        flash('用户不存在！', 'danger')
+        return redirect(url_for('user_list'))
+    
     # 权限检查：高权限可以删除低权限，同级不能相互删除
     if not current_user.can_edit_user(user):
         flash('无权限删除该用户！', 'danger')
         return redirect(url_for('user_list'))
     
     try:
+        # 保存删除前的数据用于日志
+        user_data = {
+            'user_id': user.id,
+            'username': user.username,
+            'user_level': user.user_level,
+            'user_level_display': User.LEVEL_NAMES_ZH.get(user.user_level, '普通用户'),
+            'granted_by': user.granted_by,
+            'create_time': user.create_time.strftime('%Y-%m-%d %H:%M:%S'),
+            'update_time': user.update_time.strftime('%Y-%m-%d %H:%M:%S'),
+            'has_permissions': bool(user.permissions),
+            'permissions_summary': user.permissions if user.permissions else {}
+        }
+        
         db.session.delete(user)
         db.session.commit()
+        
+        # 记录删除用户日志
+        log_activity(
+            log_type='user',
+            action='delete',
+            user_type='admin',
+            user_id=current_user.id,
+            username=current_user.username,
+            target_id=id,
+            target_info=user_data,
+            request=request
+        )
+        
         flash(f'用户 [{user.username}] 已删除！', 'success')
     except Exception as e:
         db.session.rollback()
@@ -1840,6 +2366,7 @@ def add_operator():
 
         success_count = 0
         error_messages = []
+        added_operators = []
 
         for name in names:
             try:
@@ -1854,6 +2381,7 @@ def add_operator():
                     new_op.set_password(password)
                     db.session.add(new_op)
                     success_count += 1
+                    added_operators.append(name)
                 else:
                     error_messages.append(f"操作员 '{name}' 在组 '{group_name}' 中已存在")
             except Exception as e:
@@ -1862,6 +2390,24 @@ def add_operator():
         try:
             if success_count > 0:
                 db.session.commit()
+                
+                # 记录添加操作员日志
+                log_activity(
+                    log_type='operator',
+                    action='add',
+                    user_type='admin',
+                    user_id=current_user.id,
+                    username=current_user.username,
+                    target_info={
+                        'group_name': group_name,
+                        'operator_names': added_operators,
+                        'success_count': success_count,
+                        'total_attempted': len(names),
+                        'has_password': bool(password) and password != '000000'
+                    },
+                    request=request
+                )
+                
                 flash(f'成功添加 {success_count} 个操作员到组 "{group_name}"！', 'success')
             else:
                 flash('没有成功添加任何操作员', 'warning')
@@ -1886,6 +2432,19 @@ def delete_operator(id):
     """删除操作员"""
     operator = db.session.get(OperatorGroup, int(id))
 
+    if not operator:
+        flash('操作员不存在！', 'danger')
+        return redirect(url_for('operator_list'))
+
+    # 保存删除前的数据用于日志
+    operator_data = {
+        'operator_id': operator.id,
+        'operator_name': operator.operator_name,
+        'group_name': operator.group_name,
+        'group_owner': operator.group_owner,
+        'has_signature': bool(operator.signature_file)
+    }
+
     # 超级管理员不受限制，可以删除被使用的操作员
     if not current_user.is_superuser:
         # 检查是否有生产记录在使用此操作员
@@ -1898,8 +2457,25 @@ def delete_operator(id):
             return redirect(url_for('operator_list'))
 
     try:
+        # 首先删除关联的签名文件（如果存在）
+        if operator.signature_file:
+            delete_signature_file(operator.signature_file)
+        
         db.session.delete(operator)
         db.session.commit()
+        
+        # 记录删除操作员日志
+        log_activity(
+            log_type='operator',
+            action='delete',
+            user_type='admin',
+            user_id=current_user.id,
+            username=current_user.username,
+            target_id=id,
+            target_info=operator_data,
+            request=request
+        )
+        
         flash(f'操作员 "{operator.operator_name}" 已删除！', 'success')
     except Exception as e:
         db.session.rollback()
@@ -1913,6 +2489,19 @@ def delete_operator(id):
 def delete_operator_group(group_name):
     """删除操作员组"""
     group_operators = OperatorGroup.query.filter_by(group_name=group_name).all()
+    
+    if not group_operators:
+        flash(f'组 "{group_name}" 不存在或为空！', 'danger')
+        return redirect(url_for('operator_list'))
+
+    # 保存删除前的数据用于日志
+    group_data = {
+        'group_name': group_name,
+        'operator_count': len(group_operators),
+        'operator_names': [op.operator_name for op in group_operators],
+        'group_owners': [op.operator_name for op in group_operators if op.group_owner],
+        'has_signatures': [op.operator_name for op in group_operators if op.signature_file]
+    }
 
     # 超级管理员不受限制，可以删除被使用的操作员组
     if not current_user.is_superuser:
@@ -1930,9 +2519,26 @@ def delete_operator_group(group_name):
             return redirect(url_for('operator_list'))
 
     try:
+        # 首先删除所有操作员的签名文件
+        for operator in group_operators:
+            if operator.signature_file:
+                delete_signature_file(operator.signature_file)
+        
         # 删除整个组的操作员
         delete_count = OperatorGroup.query.filter_by(group_name=group_name).delete()
         db.session.commit()
+        
+        # 记录删除操作员组日志
+        log_activity(
+            log_type='operator',
+            action='delete',
+            user_type='admin',
+            user_id=current_user.id,
+            username=current_user.username,
+            target_info=group_data,
+            request=request
+        )
+        
         flash(f'成功删除组 "{group_name}" 及其 {delete_count} 个操作员！', 'success')
     except Exception as e:
         db.session.rollback()
@@ -1992,6 +2598,21 @@ def backup_database():
         if result.returncode != 0:
             app.logger.error(f"数据库备份失败: {result.stderr}")
             return jsonify({'success': False, 'message': f'备份失败: {result.stderr}'})
+        
+        # 记录备份日志
+        log_activity(
+            log_type='backup',
+            action='backup',
+            user_type='admin',
+            user_id=current_user.id,
+            username=current_user.username,
+            target_info={
+                'filename': filename,
+                'include_timestamp': include_timestamp,
+                'compress': compress
+            },
+            request=request
+        )
         
         # 如果需要压缩
         final_filename = filename
@@ -2089,7 +2710,26 @@ def delete_backup(filename):
         if not os.path.exists(filepath):
             return jsonify({'success': False, 'message': '文件不存在'})
         
+        # 获取文件大小
+        file_size = os.path.getsize(filepath)
+        
         os.remove(filepath)
+        
+        # 记录删除备份日志
+        log_activity(
+            log_type='backup',
+            action='delete',
+            user_type='admin',
+            user_id=current_user.id,
+            username=current_user.username,
+            target_info={
+                'filename': filename,
+                'filepath': filepath,
+                'size': file_size
+            },
+            request=request
+        )
+        
         app.logger.info(f"备份文件已删除: {filename}")
         
         return jsonify({
@@ -2367,14 +3007,39 @@ def reset_operator_password(id):
     """重置操作员密码（AJAX版本）"""
     operator = db.session.get(OperatorGroup, int(id))
     
+    if not operator:
+        return jsonify({'success': False, 'message': '操作员不存在！'})
+    
     password = request.form.get('password', '').strip()
     
     if not password:
         password = '000000'  # 默认密码
     
     try:
+        # 记录重置密码前的状态
+        operator_data = {
+            'operator_id': operator.id,
+            'operator_name': operator.operator_name,
+            'group_name': operator.group_name,
+            'group_owner': operator.group_owner,
+            'has_password_hash': bool(operator.password_hash)
+        }
+        
         operator.set_password(password)
         db.session.commit()
+        
+        # 记录重置密码日志
+        log_activity(
+            log_type='operator',
+            action='reset_password',
+            user_type='admin',
+            user_id=current_user.id,
+            username=current_user.username,
+            target_id=operator.id,
+            target_info=operator_data,
+            request=request
+        )
+        
         return jsonify({'success': True, 'message': f'操作员 "{operator.operator_name}" 密码已重置！'})
     except Exception as e:
         db.session.rollback()
@@ -2394,7 +3059,18 @@ def grant_group_owner(id):
 
     operator = db.session.get(OperatorGroup, int(id))
     
+    if not operator:
+        return jsonify({'success': False, 'message': '操作员不存在！'})
+    
     try:
+        # 记录授权前的状态
+        old_group_owners = OperatorGroup.query.filter_by(
+            group_name=operator.group_name,
+            group_owner=True
+        ).all()
+        
+        old_owner_names = [op.operator_name for op in old_group_owners]
+        
         # 移除同组的原组管理员
         OperatorGroup.query.filter_by(
             group_name=operator.group_name,
@@ -2404,6 +3080,24 @@ def grant_group_owner(id):
         # 设置新组管理员
         operator.group_owner = True
         db.session.commit()
+        
+        # 记录授权组管理员日志
+        log_activity(
+            log_type='operator',
+            action='grant_owner',
+            user_type='admin',
+            user_id=current_user.id,
+            username=current_user.username,
+            target_id=operator.id,
+            target_info={
+                'operator_id': operator.id,
+                'operator_name': operator.operator_name,
+                'group_name': operator.group_name,
+                'old_group_owners': old_owner_names,
+                'new_group_owner': operator.operator_name
+            },
+            request=request
+        )
         
         return jsonify({
             'success': True, 
@@ -2426,9 +3120,31 @@ def revoke_group_owner(id):
     
     operator = db.session.get(OperatorGroup, int(id))
     
+    if not operator:
+        return jsonify({'success': False, 'message': '操作员不存在！'})
+    
+    if not operator.group_owner:
+        return jsonify({'success': False, 'message': f'操作员 "{operator.operator_name}" 不是组管理员！'})
+    
     try:
         operator.group_owner = False
         db.session.commit()
+        
+        # 记录移除组管理员权限日志
+        log_activity(
+            log_type='operator',
+            action='revoke_owner',
+            user_type='admin',
+            user_id=current_user.id,
+            username=current_user.username,
+            target_id=operator.id,
+            target_info={
+                'operator_id': operator.id,
+                'operator_name': operator.operator_name,
+                'group_name': operator.group_name
+            },
+            request=request
+        )
         
         return jsonify({
             'success': True, 
@@ -2595,6 +3311,171 @@ def get_group_signatures():
         'total_members': len(signatures),
         'signed_count': len([m for m in signatures if m['has_signature']])
     })
+
+# -------------------------- 日志管理 --------------------------
+@app.route('/system/logs')
+@login_required
+@permission_required('system_management', 'read')
+def system_logs():
+    """系统日志管理页面"""
+    return render_template('system_logs.html')
+
+@app.route('/api/system/logs')
+@login_required
+@permission_required('system_management', 'read')
+def get_system_logs():
+    """获取系统日志（API）"""
+    try:
+        # 获取查询参数
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 50))
+        log_type = request.args.get('log_type', 'all')
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        username = request.args.get('username')
+        
+        # 构建查询
+        query = ProductionLog.query
+        
+        # 日志类型筛选
+        if log_type != 'all':
+            query = query.filter(ProductionLog.log_type == log_type)
+        
+        # 用户筛选
+        if username:
+            query = query.filter(ProductionLog.username.contains(username))
+        
+        # 日期筛选
+        if start_date:
+            start_datetime = datetime.strptime(start_date, '%Y-%m-%d')
+            query = query.filter(ProductionLog.created_at >= start_datetime)
+        
+        if end_date:
+            end_datetime = datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1)
+            query = query.filter(ProductionLog.created_at < end_datetime)
+        
+        # 排序和分页
+        logs = query.order_by(ProductionLog.created_at.desc()).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        # 格式化日志数据
+        logs_data = []
+        for log in logs.items:
+            logs_data.append({
+                'id': log.id,
+                'log_type': log.log_type,
+                'log_type_display': ProductionLog.get_log_type_display(log.log_type),
+                'action': log.action,
+                'action_display': ProductionLog.get_action_display(log.action),
+                'user_type': log.user_type,
+                'user_id': log.user_id,
+                'username': log.username,
+                'target_id': log.target_id,
+                'target_info': log.get_target_info_dict(),
+                'ip_address': log.ip_address,
+                'user_agent': log.user_agent,
+                'created_at': log.created_at.strftime('%Y-%m-%d %H:%M:%S')
+            })
+        
+        return jsonify({
+            'success': True,
+            'logs': logs_data,
+            'total': logs.total,
+            'pages': logs.pages,
+            'current_page': logs.page,
+            'per_page': logs.per_page
+        })
+        
+    except Exception as e:
+        app.logger.error(f"获取系统日志失败: {str(e)}")
+        return jsonify({'success': False, 'message': f'获取日志失败: {str(e)}'})
+
+@app.route('/api/system/logs/clear', methods=['POST'])
+@login_required
+@permission_required('system_management', 'advanced')
+def clear_system_logs():
+    """清除所有系统日志（仅保留最近一周）"""
+    try:
+        # 只有超级管理员可以清除日志
+        if not current_user.is_superuser:
+            return jsonify({'success': False, 'message': '需要超级管理员权限'})
+        
+        # 计算一周前的日期
+        one_week_ago = datetime.now() - timedelta(days=7)
+        
+        # 删除一周前的日志
+        deleted_count = ProductionLog.query.filter(
+            ProductionLog.created_at < one_week_ago
+        ).delete()
+        
+        db.session.commit()
+        
+        # 记录清除日志操作
+        log_activity(
+            log_type='system',
+            action='delete',
+            user_type='admin',
+            user_id=current_user.id,
+            username=current_user.username,
+            target_info={'deleted_count': deleted_count},
+            request=request
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': f'已清除 {deleted_count} 条日志（保留最近一周的日志）'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"清除日志失败: {str(e)}")
+        return jsonify({'success': False, 'message': f'清除日志失败: {str(e)}'})
+
+@app.route('/api/system/logs/stats')
+@login_required
+@permission_required('system_management', 'read')
+def get_logs_stats():
+    """获取日志统计信息"""
+    try:
+        # 总日志数
+        total_logs = ProductionLog.query.count()
+        
+        # 按类型统计
+        type_stats = {}
+        for log_type in ProductionLog.LOG_TYPES.keys():
+            count = ProductionLog.query.filter_by(log_type=log_type).count()
+            type_stats[ProductionLog.get_log_type_display(log_type)] = count
+        
+        # 今日日志数
+        today = date.today()
+        today_logs = ProductionLog.query.filter(
+            db.cast(ProductionLog.created_at, db.Date) == today
+        ).count()
+        
+        # 最近一周日志趋势
+        week_dates = []
+        week_counts = []
+        for i in range(6, -1, -1):
+            day_date = today - timedelta(days=i)
+            count = ProductionLog.query.filter(
+                db.cast(ProductionLog.created_at, db.Date) == day_date
+            ).count()
+            week_dates.append(day_date.strftime('%m-%d'))
+            week_counts.append(count)
+        
+        return jsonify({
+            'success': True,
+            'total_logs': total_logs,
+            'today_logs': today_logs,
+            'type_stats': type_stats,
+            'week_dates': week_dates,
+            'week_counts': week_counts
+        })
+        
+    except Exception as e:
+        app.logger.error(f"获取日志统计失败: {str(e)}")
+        return jsonify({'success': False, 'message': f'获取统计失败: {str(e)}'})
 
 # -------------------------- 静态文件路由 --------------------------
 @app.route('/static/signatures/<filename>')

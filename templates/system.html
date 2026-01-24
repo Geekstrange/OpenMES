@@ -118,7 +118,7 @@
         }
 
         .stat-value {
-            font-size: 28px;
+            font-size: 24px;
             font-weight: bold;
             color: #2a5298;
             margin-bottom: 5px;
@@ -414,7 +414,7 @@
             {% endif %}
 
             {% if has_perm('manage_operator') %}
-            <a href="{{ url_for('operator_list') }}" class="nav-btn">操作员管理</a>
+            <a href="{{ url_for('operator_list') }}" class="nav-btn">成员管理</a>
             {% endif %}
 
             {% if has_perm('manage_users') %}

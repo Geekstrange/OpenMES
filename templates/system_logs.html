@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>日志管理 - OpenPMS</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            padding: 20px 30px;
+            margin-bottom: 30px;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .nav {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .nav-btn.active {
+            background: rgba(255, 255, 255, 0.25);
+            font-weight: bold;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto 40px;
+            padding: 0 20px;
+        }
+
+        /* 页面标题 */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .page-title {
+            font-size: 22px;
+            font-weight: 600;
+            color: #1e3c72;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* .page-title:before {
+            content: "⚙️";
+            font-size: 20px;
+        } */
+
+        /* 状态卡片 */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        .stat-title {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2a5298;
+            margin-bottom: 5px;
+        }
+
+        /* 按钮样式 */
+        .btn {
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 4px;
+            color: white;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.3s;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #0056b3, #004085);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 123, 255, 0.2);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #28a745, #20c997);
+        }
+
+        .btn-success:hover {
+            background: linear-gradient(135deg, #218838, #1ca179);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.2);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #dc3545, #c82333);
+        }
+
+        .btn-danger:hover {
+            background: linear-gradient(135deg, #c82333, #bd2130);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(220, 53, 69, 0.2);
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 13px;
+        }
+
+        /* 卡片样式 */
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            padding: 18px 25px;
+            font-weight: 600;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-body {
+            padding: 25px;
+        }
+
+        /* 备份文件列表项 */
+        .backup-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            padding: 15px 20px;
+            border-radius: 6px;
+            border: 1px solid #e9ecef;
+            margin-bottom: 10px;
+            transition: all 0.2s;
+        }
+
+        .backup-item:hover {
+            border-color: #b3d7ff;
+            box-shadow: 0 2px 8px rgba(0, 123, 255, 0.1);
+        }
+
+        .backup-info {
+            flex: 1;
+        }
+
+        .backup-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+            font-size: 15px;
+        }
+
+        .backup-meta {
+            font-size: 12px;
+            color: #666;
+            display: flex;
+            gap: 15px;
+        }
+
+        .backup-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        /* 备份进度 */
+        .backup-progress {
+            display: none;
+            margin-top: 15px;
+        }
+
+        .progress-bar {
+            background: #f0f0f0;
+            border-radius: 4px;
+            height: 6px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .progress-fill {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            width: 0%;
+            height: 100%;
+            transition: width 0.3s;
+        }
+
+        .progress-text {
+            font-size: 13px;
+            color: #666;
+            text-align: center;
+        }
+
+        /* 复选框组 */
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin: 15px 0;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #555;
+            cursor: pointer;
+        }
+
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6c757d;
+        }
+
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+
+        /* 当前用户信息 */
+        .current-user-info {
+            background: #e8f4fd;
+            color: #004085;
+            padding: 12px 15px;
+            border-radius: 6px;
+            border-left: 4px solid #007bff;
+            margin-bottom: 20px;
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 15px;
+            }
+
+            .stats-row {
+                grid-template-columns: 1fr;
+            }
+
+            .header-top {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .nav {
+                flex-wrap: wrap;
+            }
+
+            .backup-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .backup-actions {
+                width: 100%;
+                justify-content: flex-end;
+            }
+        }
+
+        /* 退出登录按钮 */
+        .btn-logout {
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            transition: opacity 0.3s;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .btn-logout:hover {
+            opacity: 0.8;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* 消息提示 */
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+
+        .flash {
+            padding: 12px 20px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            border-left: 4px solid transparent;
+        }
+
+        .flash.success {
+            background: #d4edda;
+            color: #155724;
+            border-left-color: #28a745;
+        }
+
+        .flash.danger {
+            background: #f8d7da;
+            color: #721c24;
+            border-left-color: #dc3545;
+        }
+
+        .flash.warning {
+            background: #fff3cd;
+            color: #856404;
+            border-left-color: #ffc107;
+        }
+        
+        .filter-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            min-width: 150px;
+        }
+        
+        .filter-label {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .filter-select, .filter-input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .log-table {
+            width: 100%;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            margin-bottom: 30px;
+        }
+        
+        .log-table th {
+            background: #f8f9fa;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #e9ecef;
+        }
+        
+        .log-table td {
+            padding: 15px;
+            border-bottom: 1px solid #e9ecef;
+            vertical-align: top;
+        }
+        
+        .log-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .log-type-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .log-type-login { background: #e3f2fd; color: #1976d2; }
+        .log-type-record { background: #f3e5f5; color: #7b1fa2; }
+        .log-type-process { background: #e8f5e9; color: #388e3c; }
+        .log-type-operator { background: #fff3e0; color: #f57c00; }
+        .log-type-user { background: #fce4ec; color: #c2185b; }
+        .log-type-backup { background: #e0f2f1; color: #00796b; }
+        .log-type-system { background: #fff8e1; color: #ff8f00; }
+        
+        .action-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            background: #6c757d;
+            color: white;
+            margin-right: 5px;
+        }
+        
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .page-btn {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .page-btn:hover {
+            background: #f8f9fa;
+        }
+        
+        .page-btn.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        
+        .page-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .user-type-admin {
+            color: #007bff;
+            font-weight: 600;
+        }
+        
+        .user-type-operator {
+            color: #28a745;
+            font-weight: 600;
+        }
+        
+        .json-preview {
+            max-width: 300px;
+            max-height: 100px;
+            overflow: auto;
+            background: #f8f9fa;
+            padding: 5px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-top">
+            <h1>OpenPMS</h1>
+            <div class="user-info">
+                <span>欢迎，{{ current_user.username }}</span>
+                {% if current_user.is_admin %}
+                <span style="background: #ffc107; color: #333; padding: 4px 10px; border-radius: 12px; font-size: 12px;">
+                    {{ current_user.admin_level_display }}
+                </span>
+                {% endif %}
+                <a href="{{ url_for('logout') }}" class="btn-logout">退出登录</a>
+            </div>
+        </div>
+
+        <div class="nav">
+            <a href="{{ url_for('index') }}" class="nav-btn">生产记录</a>
+
+            {% if has_perm('add_record') %}
+            <a href="{{ url_for('add_record') }}" class="nav-btn">添加记录</a>
+            {% endif %}
+
+            {% if has_perm('manage_process') %}
+            <a href="{{ url_for('process_list') }}" class="nav-btn">工序管理</a>
+            {% endif %}
+
+            {% if has_perm('manage_operator') %}
+            <a href="{{ url_for('operator_list') }}" class="nav-btn">成员管理</a>
+            {% endif %}
+
+            {% if has_perm('manage_users') %}
+            <a href="{{ url_for('user_list') }}" class="nav-btn">用户管理</a>
+            {% endif %}
+
+            {% if has_perm('manage_system') %}
+            <a href="{{ url_for('system_management') }}" class="nav-btn">系统管理</a>
+            <a href="{{ url_for('system_logs') }}" class="nav-btn active">系统日志</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- 消息提示 -->
+        <div class="flash-messages" id="flash-messages">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            {% for category, message in messages %}
+            <div class="flash {{ category }}">
+                {{ message }}
+            </div>
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
+        </div>
+
+        <!-- 页面标题 -->
+        <div class="page-header">
+            <div class="page-title">📋 日志管理</div>
+            <div style="display: flex; gap: 10px;">
+                <button onclick="refreshLogs()" class="btn btn-primary">
+                    🔄 刷新
+                </button>
+                {% if current_user.is_superuser %}
+                <button onclick="clearOldLogs()" class="btn btn-danger">
+                    🔥 清除旧日志
+                </button>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 统计卡片 -->
+        <div class="stats-row" id="stats-container">
+            <div class="stat-card">
+                <div class="stat-title">总日志数</div>
+                <div class="stat-value">--</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-title">今日日志</div>
+                <div class="stat-value">--</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-title">日志类型</div>
+                <div class="stat-value">--</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-title">存储状态</div>
+                <div class="stat-value">--</div>
+            </div>
+        </div>
+
+        <!-- 日志筛选 -->
+        <div class="filter-row">
+            <div class="filter-group">
+                <label class="filter-label">日志类型</label>
+                <select class="filter-select" id="filter-type" onchange="applyFilters()">
+                    <option value="all">所有类型</option>
+                    <option value="login_logout">登录登出</option>
+                    <option value="record">生产记录</option>
+                    <option value="process">工序管理</option>
+                    <option value="operator">成员管理</option>
+                    <option value="user">用户管理</option>
+                    <option value="backup">备份管理</option>
+                    <option value="system">系统操作</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label class="filter-label">用户名</label>
+                <input type="text" class="filter-input" id="filter-username" 
+                       placeholder="输入用户名" onchange="applyFilters()">
+            </div>
+            
+            <div class="filter-group">
+                <label class="filter-label">开始日期</label>
+                <input type="date" class="filter-input" id="filter-start-date" 
+                       onchange="applyFilters()">
+            </div>
+            
+            <div class="filter-group">
+                <label class="filter-label">结束日期</label>
+                <input type="date" class="filter-input" id="filter-end-date" 
+                       onchange="applyFilters()">
+            </div>
+            
+            <div class="filter-group" style="margin-top: 20px;">
+                <button onclick="resetFilters()" class="btn btn-danger" style="padding: 8px 16px;">
+                    重置筛选
+                </button>
+            </div>
+        </div>
+
+        <!-- 日志表格 -->
+        <table class="log-table" id="logs-table">
+            <thead>
+                <tr>
+                    <th width="120">时间</th>
+                    <th width="100">类型</th>
+                    <th width="100">操作</th>
+                    <th width="120">用户</th>
+                    <th width="100">用户类型</th>
+                    <th width="150">操作详情</th>
+                    <th width="120">IP地址</th>
+                    <th>浏览器信息</th>
+                </tr>
+            </thead>
+            <tbody id="logs-body">
+                <tr>
+                    <td colspan="8" style="text-align: center; padding: 40px;">
+                        <div>正在加载日志数据...</div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- 分页 -->
+        <div class="pagination" id="pagination">
+            <!-- 分页按钮将通过JavaScript动态生成 -->
+        </div>
+
+        <!-- 注意事项 -->
+        <div style="background: #fff3cd; color: #856404; padding: 15px; border-radius: 6px; border-left: 4px solid #ffc107; margin-top: 30px;">
+            <div style="font-weight: 600; margin-bottom: 5px; display: flex; align-items: center; gap: 8px;">
+                <span>⚠️</span>
+                日志管理说明
+            </div>
+            <div style="font-size: 13px; line-height: 1.5;">
+                <p>1. <strong>日志保留策略</strong>：系统自动保留最近一周的日志，超过一周的日志将自动归档到文件。</p>
+                <p>2. <strong>日志类型说明</strong>：
+                    <ul style="margin-left: 20px; margin-top: 5px; margin-bottom: 5px;">
+                        <li><span class="log-type-login" style="padding: 2px 6px;">登录登出</span>：用户和成员的登录、登出记录</li>
+                        <li><span class="log-type-record" style="padding: 2px 6px;">生产记录</span>：生产记录的增删改操作</li>
+                        <li><span class="log-type-process" style="padding: 2px 6px;">工序管理</span>：工序的增删改操作</li>
+                        <li><span class="log-type-operator" style="padding: 2px 6px;">成员管理</span>：成员的增删改、密码重置等操作</li>
+                        <li><span class="log-type-user" style="padding: 2px 6px;">用户管理</span>：系统用户的增删改、权限变更等操作</li>
+                        <li><span class="log-type-backup" style="padding: 2px 6px;">备份管理</span>：数据库备份、恢复、删除备份文件等操作</li>
+                        <li><span class="log-type-system" style="padding: 2px 6px;">系统操作</span>：系统设置、日志清理等操作</li>
+                    </ul>
+                </p>
+                <p>3. <strong>归档文件位置</strong>：归档的日志文件保存在 <code>logs/archive/</code> 目录下。</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    let currentPage = 1;
+    let totalPages = 1;
+    let filters = {
+        log_type: 'all',
+        username: '',
+        start_date: '',
+        end_date: ''
+    };
+
+    // 页面加载时获取日志数据
+    document.addEventListener('DOMContentLoaded', function() {
+        loadLogs();
+        loadLogStats();
+        
+        // 设置默认日期为最近一周
+        const today = new Date();
+        const weekAgo = new Date(today);
+        weekAgo.setDate(today.getDate() - 7);
+        
+        document.getElementById('filter-start-date').value = weekAgo.toISOString().split('T')[0];
+        document.getElementById('filter-end-date').value = today.toISOString().split('T')[0];
+        
+        filters.start_date = weekAgo.toISOString().split('T')[0];
+        filters.end_date = today.toISOString().split('T')[0];
+    });
+
+    // 加载日志数据
+    function loadLogs(page = 1) {
+        const logsBody = document.getElementById('logs-body');
+        logsBody.innerHTML = `
+            <tr>
+                <td colspan="8" style="text-align: center; padding: 40px;">
+                    <div>正在加载日志数据...</div>
+                </td>
+            </tr>
+        `;
+        
+        // 构建查询参数
+        const params = new URLSearchParams({
+            page: page,
+            per_page: 50,
+            ...filters
+        });
+        
+        fetch(`/api/system/logs?${params}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    currentPage = data.current_page;
+                    totalPages = data.pages;
+                    
+                    // 更新表格
+                    updateLogsTable(data.logs);
+                    
+                    // 更新分页
+                    updatePagination(data.total, data.pages, data.current_page);
+                } else {
+                    showAlert('加载日志失败：' + data.message, 'danger');
+                }
+            })
+            .catch(error => {
+                showAlert('加载日志失败：' + error.message, 'danger');
+            });
+    }
+
+    // 更新日志表格
+    function updateLogsTable(logs) {
+        const logsBody = document.getElementById('logs-body');
+        
+        if (logs.length === 0) {
+            logsBody.innerHTML = `
+                <tr>
+                    <td colspan="8" style="text-align: center; padding: 40px;">
+                        <div>📭 没有找到符合条件的日志记录</div>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        // 日志类型到CSS类名的映射
+        const typeClassMap = {
+            'login_logout': 'log-type-login',
+            'record': 'log-type-record',
+            'process': 'log-type-process',
+            'operator': 'log-type-operator',
+            'user': 'log-type-user',
+            'backup': 'log-type-backup',
+            'system': 'log-type-system'
+        };
+        
+        let html = '';
+        logs.forEach(log => {
+            // 使用映射获取正确的CSS类名
+            const typeClass = typeClassMap[log.log_type] || `log-type-${log.log_type}`;
+            
+            // 格式化操作详情
+            let detailsHtml = '--';
+            if (log.target_info && Object.keys(log.target_info).length > 0) {
+                detailsHtml = `<div class="json-preview">${JSON.stringify(log.target_info, null, 2)}</div>`;
+            }
+            
+            html += `
+                <tr>
+                    <td>${log.created_at}</td>
+                    <td>
+                        <span class="log-type-badge ${typeClass}">
+                            ${log.log_type_display}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="action-badge">${log.action_display}</span>
+                    </td>
+                    <td>${log.username}</td>
+                    <td class="user-type-${log.user_type}">
+                        ${log.user_type === 'admin' ? '系统用户' : '成员'}
+                    </td>
+                    <td>${detailsHtml}</td>
+                    <td>${log.ip_address || '--'}</td>
+                    <td style="font-size: 12px;">${log.user_agent || '--'}</td>
+                </tr>
+            `;
+        });
+        
+        logsBody.innerHTML = html;
+    }
+
+    // 更新分页
+    function updatePagination(total, pages, current) {
+        const pagination = document.getElementById('pagination');
+        
+        if (pages <= 1) {
+            pagination.innerHTML = `<div>共 ${total} 条记录</div>`;
+            return;
+        }
+        
+        let html = `
+            <button class="page-btn" onclick="changePage(${current - 1})" 
+                    ${current === 1 ? 'disabled' : ''}>
+                上一页
+            </button>
+        `;
+        
+        // 显示页码按钮（最多显示5个）
+        const startPage = Math.max(1, current - 2);
+        const endPage = Math.min(pages, current + 2);
+        
+        for (let i = startPage; i <= endPage; i++) {
+            html += `
+                <button class="page-btn ${i === current ? 'active' : ''}" 
+                        onclick="changePage(${i})">
+                    ${i}
+                </button>
+            `;
+        }
+        
+        html += `
+            <button class="page-btn" onclick="changePage(${current + 1})" 
+                    ${current === pages ? 'disabled' : ''}>
+                下一页
+            </button>
+            <span style="margin-left: 10px;">共 ${total} 条记录，${pages} 页</span>
+        `;
+        
+        pagination.innerHTML = html;
+    }
+
+    // 改变页码
+    function changePage(page) {
+        if (page < 1 || page > totalPages) return;
+        loadLogs(page);
+    }
+
+    // 应用筛选
+    function applyFilters() {
+        filters = {
+            log_type: document.getElementById('filter-type').value,
+            username: document.getElementById('filter-username').value.trim(),
+            start_date: document.getElementById('filter-start-date').value,
+            end_date: document.getElementById('filter-end-date').value
+        };
+        
+        loadLogs(1);
+    }
+
+    // 重置筛选
+    function resetFilters() {
+        document.getElementById('filter-type').value = 'all';
+        document.getElementById('filter-username').value = '';
+        
+        // 重置为最近一周
+        const today = new Date();
+        const weekAgo = new Date(today);
+        weekAgo.setDate(today.getDate() - 7);
+        
+        document.getElementById('filter-start-date').value = weekAgo.toISOString().split('T')[0];
+        document.getElementById('filter-end-date').value = today.toISOString().split('T')[0];
+        
+        applyFilters();
+    }
+
+    // 刷新日志
+    function refreshLogs() {
+        loadLogs(currentPage);
+        loadLogStats();
+        showAlert('日志数据已刷新', 'success');
+    }
+
+    // 加载日志统计
+    function loadLogStats() {
+        fetch('/api/system/logs/stats')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.querySelector('#stats-container .stat-card:nth-child(1) .stat-value').textContent = data.total_logs;
+                    document.querySelector('#stats-container .stat-card:nth-child(2) .stat-value').textContent = data.today_logs;
+                    
+                    // 显示日志类型分布
+                    let typeStatsHtml = '';
+                    for (const [type, count] of Object.entries(data.type_stats)) {
+                        if (count > 0) {
+                            typeStatsHtml += `<div style="margin-bottom: 3px;">${type}: ${count}</div>`;
+                        }
+                    }
+                    document.querySelector('#stats-container .stat-card:nth-child(3) .stat-value').innerHTML = typeStatsHtml;
+                    
+                    // 显示存储状态
+                    const storageStatus = data.total_logs > 1000 ? '较多' : '正常';
+                    const statusClass = data.total_logs > 1000 ? 'warning' : 'success';
+                    document.querySelector('#stats-container .stat-card:nth-child(4) .stat-value').innerHTML = 
+                        `<span style="color: ${statusClass === 'success' ? '#28a745' : '#ffc107'}">${storageStatus}</span>`;
+                }
+            })
+            .catch(error => {
+                console.error('加载日志统计失败：', error);
+            });
+    }
+
+    // 清除旧日志
+    function clearOldLogs() {
+        if (!confirm('确定要清除一周前的日志吗？此操作会将一周前的日志归档到文件，并从数据库中删除。')) {
+            return;
+        }
+        
+        fetch('/api/system/logs/clear', {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert(data.message, 'success');
+                loadLogs();
+                loadLogStats();
+            } else {
+                showAlert('清除日志失败：' + data.message, 'danger');
+            }
+        })
+        .catch(error => {
+            showAlert('清除日志失败：' + error.message, 'danger');
+        });
+    }
+
+    // 显示提示消息
+    function showAlert(message, type) {
+        const flashContainer = document.getElementById('flash-messages');
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `flash ${type}`;
+        alertDiv.textContent = message;
+        
+        flashContainer.appendChild(alertDiv);
+        
+        // 3秒后自动移除
+        setTimeout(() => {
+            alertDiv.style.animation = 'slideOut 0.3s ease-out';
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.parentNode.removeChild(alertDiv);
+                }
+            }, 300);
+        }, 3000);
+    }
+
+    // 添加CSS动画
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes slideOut {
+            from {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+        }
+    `;
+    document.head.appendChild(style);
+    </script>
+</body>
+</html>
