@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ error_code }} {{ error_name }} - OpenPMS</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: var(--bg-gradient);
+            transition: background 0.5s ease;
+        }
+
+        /* 动态CSS变量 */
+        :root {
+            --bg-gradient: linear-gradient(135deg, #1e3c72, #2a5298);
+            --header-gradient: linear-gradient(135deg, #1e3c72, #2a5298);
+            --primary-color: #2a5298;
+            --accent-color: #007bff;
+            --warning-color: #ffc107;
+        }
+
+        /* 错误卡片 */
+        .error-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            width: 100%;
+            max-width: 550px;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .error-header {
+            background: var(--header-gradient);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .error-header h1 {
+            font-size: 32px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            position: relative;
+            z-index: 2;
+            letter-spacing: 0.5px;
+        }
+
+        .error-code {
+            font-size: 72px;
+            font-weight: 800;
+            color: rgba(255, 255, 255, 0.9);
+            position: relative;
+            z-index: 2;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+            position: relative;
+            z-index: 2;
+        }
+
+        .error-content {
+            padding: 40px;
+        }
+
+        /* 错误图标 */
+        .error-icon {
+            text-align: center;
+            font-size: 80px;
+            margin-bottom: 25px;
+            animation: var(--icon-animation);
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(-360deg); }
+        }
+
+        /* 错误信息 */
+        .error-message {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .error-message h2 {
+            font-size: 20px;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .error-message p {
+            color: #666;
+            line-height: 1.6;
+            font-size: 15px;
+        }
+
+        /* 操作按钮 */
+        .action-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 14px 28px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-color), var(--primary-color));
+            color: white;
+        }
+
+        .btn-primary:hover {
+            filter: brightness(1.1);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 123, 255, 0.2);
+        }
+
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #333;
+            border: 1px solid #dee2e6;
+        }
+
+        .btn-secondary:hover {
+            background: #e9ecef;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 联系信息 */
+        .contact-info {
+            background: rgba(255, 193, 7, 0.1);
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 20px;
+            border-left: 4px solid var(--warning-color);
+            font-size: 13px;
+        }
+
+        .contact-info strong {
+            color: #856404;
+        }
+
+        /* 装饰元素 */
+        .decoration {
+            position: absolute;
+            z-index: 1;
+            opacity: 0.1;
+            font-size: 40px;
+        }
+
+        .dec-1 {
+            top: 20px;
+            left: 20px;
+        }
+
+        .dec-2 {
+            bottom: 20px;
+            right: 20px;
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 480px) {
+            .error-content {
+                padding: 25px 20px;
+            }
+
+            .error-header {
+                padding: 25px 20px;
+            }
+
+            .error-code {
+                font-size: 56px;
+            }
+
+            .error-icon {
+                font-size: 60px;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+
+            body {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="error-card">
+        <div class="error-header">
+            <div class="decoration dec-1">🏭</div>
+            <div class="decoration dec-2">⚙️</div>
+            <div class="error-code">{{ error_code }}</div>
+            <div class="subtitle">OpenPMS</div>
+        </div>
+
+        <div class="error-content">
+            <div class="error-icon" id="error-icon">{{ error_icon }}</div>
+            
+            <div class="error-message">
+                <h2 id="error-title">{{ error_title }}</h2>
+                <p id="error-description">{{ error_description }}</p>
+            </div>
+
+            <div class="action-buttons">
+				{% if error_code == 403 %}
+				<a href="/login" class="btn btn-primary">
+					<span>🔐</span>
+					重新登录
+				</a>
+				{% endif %}
+                
+                {% if error_code != 401 and error_code != 403 %}
+                <a href="{{ url_for('index') }}" class="btn btn-primary">
+                    <span>🏠</span>
+                    返回首页
+                </a>
+                {% endif %}
+                
+                <button onclick="window.history.back()" class="btn btn-secondary">
+                    <span>↩️</span>
+                    返回上一页
+                </button>
+                
+                {% if error_code >= 500 %}
+                <button onclick="window.location.reload()" class="btn btn-secondary">
+                    <span>🔄</span>
+                    重新加载
+                </button>
+                {% endif %}
+            </div>
+
+            <!-- 常见解决方案 -->
+            <div class="contact-info" id="solutions-section">
+                <h3 style="margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                    <span>💡</span>
+                    解决方案建议
+                </h3>
+                <div id="solutions-list">{{ solutions }}</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 根据状态码动态设置页面样式
+        document.addEventListener('DOMContentLoaded', function() {
+            const errorCode = {{ error_code }};
+            
+            // 定义状态码对应的配置
+            const errorConfigs = {
+                // 4xx 客户端错误
+                400: {
+                    bgGradient: 'linear-gradient(135deg, #ffc107, #fd7e14)',
+                    headerGradient: 'linear-gradient(135deg, #ffc107, #fd7e14)',
+                    primaryColor: '#fd7e14',
+                    accentColor: '#ffc107',
+                    iconAnimation: 'shake 0.5s ease-in-out',
+                    icon: '🤔',
+                    solutions: `
+                        <ul style="margin-left: 20px; margin-top: 5px;">
+                            <li>检查请求参数是否正确</li>
+                            <li>确保表单数据格式正确</li>
+                            <li>验证输入数据是否符合要求</li>
+                        </ul>
+                    `
+                },
+                401: {
+                    bgGradient: 'linear-gradient(135deg, #6f42c1, #6610f2)',
+                    headerGradient: 'linear-gradient(135deg, #6f42c1, #6610f2)',
+                    primaryColor: '#6610f2',
+                    accentColor: '#6f42c1',
+                    iconAnimation: 'shake 0.5s ease-in-out',
+                    icon: '🔒',
+                    solutions: `
+                        <ul style="margin-left: 20px; margin-top: 5px;">
+                            <li>请先登录系统</li>
+                            <li>检查登录凭据是否过期</li>
+                            <li>确认您有访问此资源的权限</li>
+                        </ul>
+                    `
+                },
+                403: {
+                    bgGradient: 'linear-gradient(135deg, #dc3545, #c82333)',
+                    headerGradient: 'linear-gradient(135deg, #dc3545, #c82333)',
+                    primaryColor: '#c82333',
+                    accentColor: '#dc3545',
+                    iconAnimation: 'shake 0.8s ease-in-out',
+                    icon: '🚫',
+                    solutions: `
+                        <ul style="margin-left: 20px; margin-top: 5px;">
+                            <li>联系管理员获取访问权限</li>
+                            <li>确认您的用户角色是否有权限</li>
+                            <li>切换到有权限的用户账户</li>
+                        </ul>
+                    `
+                },
+                404: {
+                    bgGradient: 'linear-gradient(135deg, #17a2b8, #138496)',
+                    headerGradient: 'linear-gradient(135deg, #17a2b8, #138496)',
+                    primaryColor: '#138496',
+                    accentColor: '#17a2b8',
+                    iconAnimation: 'float 3s ease-in-out infinite',
+                    icon: '🔍',
+                    solutions: `
+                        <ul style="margin-left: 20px; margin-top: 5px;">
+                            <li>检查URL是否正确拼写</li>
+                            <li>使用导航菜单访问其他页面</li>
+                            <li>确认资源是否已被删除或移动</li>
+                        </ul>
+                    `
+                },
+                408: {
+                    bgGradient: 'linear-gradient(135deg, #ffc107, #fd7e14)',
+                    headerGradient: 'linear-gradient(135deg, #ffc107, #fd7e14)',
+                    primaryColor: '#fd7e14',
+                    accentColor: '#ffc107',
+                    iconAnimation: 'pulse 2s ease-in-out infinite',
+                    icon: '⏱️',
+                    solutions: `
+                        <ul style="margin-left: 20px; margin-top: 5px;">
+                            <li>检查网络连接是否稳定</li>
+                            <li>稍后重试操作</li>
+                            <li>简化请求数据量</li>
+                        </ul>
+                    `
+                },
+                429: {
+                    bgGradient: 'linear-gradient(135deg, #6c757d, #495057)',
+                    headerGradient: 'linear-gradient(135deg, #6c757d, #495057)',
+                    primaryColor: '#495057',
+                    accentColor: '#6c757d',
+                    iconAnimation: 'pulse 1s ease-in-out infinite',
+                    icon: '🚦',
+                    solutions: `
+                        <ul style="margin-left: 20px; margin-top: 5px;">
+                            <li>稍等几分钟再重试</li>
+                            <li>减少操作频率</li>
+                            <li>联系管理员调整限制</li>
+                        </ul>
+                    `
+                },
+                // 5xx 服务器错误
+                500: {
+                    bgGradient: 'linear-gradient(135deg, #dc3545, #c82333)',
+                    headerGradient: 'linear-gradient(135deg, #dc3545, #c82333)',
+                    primaryColor: '#c82333',
+                    accentColor: '#dc3545',
+                    iconAnimation: 'pulse 2s ease-in-out infinite',
+                    icon: '🚨',
+                    solutions: `
+                        <ul style="margin-left: 20px; margin-top: 5px;">
+                            <li>刷新页面重试</li>
+                            <li>等待几分钟后再次尝试</li>
+                            <li>联系技术支持团队</li>
+                        </ul>
+                    `
+                },
+                502: {
+                    bgGradient: 'linear-gradient(135deg, #6f42c1, #6610f2)',
+                    headerGradient: 'linear-gradient(135deg, #6f42c1, #6610f2)',
+                    primaryColor: '#6610f2',
+                    accentColor: '#6f42c1',
+                    iconAnimation: 'rotate 4s linear infinite',
+                    icon: '🔄',
+                    solutions: `
+                        <ul style="margin-left: 20px; margin-top: 5px;">
+                            <li>检查网络代理设置</li>
+                            <li>等待服务恢复后重试</li>
+                            <li>联系系统管理员</li>
+                        </ul>
+                    `
+                },
+                503: {
+                    bgGradient: 'linear-gradient(135deg, #6c757d, #495057)',
+                    headerGradient: 'linear-gradient(135deg, #6c757d, #495057)',
+                    primaryColor: '#495057',
+                    accentColor: '#6c757d',
+                    iconAnimation: 'pulse 1.5s ease-in-out infinite',
+                    icon: '🔧',
+                    solutions: `
+                        <ul style="margin-left: 20px; margin-top: 5px;">
+                            <li>等待维护完成</li>
+                            <li>查看系统公告了解维护时间</li>
+                            <li>稍后再次访问</li>
+                        </ul>
+                    `
+                },
+                504: {
+                    bgGradient: 'linear-gradient(135deg, #fd7e14, #e8590c)',
+                    headerGradient: 'linear-gradient(135deg, #fd7e14, #e8590c)',
+                    primaryColor: '#e8590c',
+                    accentColor: '#fd7e14',
+                    iconAnimation: 'pulse 3s ease-in-out infinite',
+                    icon: '⏳',
+                    solutions: `
+                        <ul style="margin-left: 20px; margin-top: 5px;">
+                            <li>检查网络连接速度</li>
+                            <li>简化请求或减少数据量</li>
+                            <li>稍后重试操作</li>
+                        </ul>
+                    `
+                }
+            };
+
+            // 获取配置或使用默认配置
+            const config = errorConfigs[errorCode] || {
+                bgGradient: errorCode >= 500 
+                    ? 'linear-gradient(135deg, #dc3545, #c82333)' 
+                    : 'linear-gradient(135deg, #ffc107, #fd7e14)',
+                headerGradient: errorCode >= 500 
+                    ? 'linear-gradient(135deg, #dc3545, #c82333)' 
+                    : 'linear-gradient(135deg, #ffc107, #fd7e14)',
+                primaryColor: errorCode >= 500 ? '#c82333' : '#fd7e14',
+                accentColor: errorCode >= 500 ? '#dc3545' : '#ffc107',
+                iconAnimation: errorCode >= 500 ? 'pulse 2s ease-in-out infinite' : 'shake 0.5s ease-in-out',
+                icon: errorCode >= 500 ? '❌' : '⚠️',
+                solutions: `
+                    <ul style="margin-left: 20px; margin-top: 5px;">
+                        <li>刷新页面重试</li>
+                        <li>检查网络连接</li>
+                        <li>联系技术支持</li>
+                    </ul>
+                `
+            };
+
+            // 应用动态样式
+            document.documentElement.style.setProperty('--bg-gradient', config.bgGradient);
+            document.documentElement.style.setProperty('--header-gradient', config.headerGradient);
+            document.documentElement.style.setProperty('--primary-color', config.primaryColor);
+            document.documentElement.style.setProperty('--accent-color', config.accentColor);
+            document.documentElement.style.setProperty('--icon-animation', config.iconAnimation);
+            
+            // 更新图标
+            const errorIcon = document.getElementById('error-icon');
+            if (errorIcon) {
+                errorIcon.style.animation = config.iconAnimation;
+                if (!errorIcon.textContent.trim()) {
+                    errorIcon.textContent = config.icon;
+                }
+            }
+            
+            // 更新解决方案
+            const solutionsList = document.getElementById('solutions-list');
+            if (solutionsList && !solutionsList.innerHTML.trim()) {
+                solutionsList.innerHTML = config.solutions;
+            }
+        });
+    </script>
+</body>
+</html>

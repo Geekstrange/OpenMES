@@ -20,6 +20,13 @@ from apscheduler.schedulers.background import BackgroundScheduler
 import atexit
 import threading
 import time
+from werkzeug.exceptions import (
+    BadRequest, Unauthorized, Forbidden, NotFound, 
+    RequestTimeout, TooManyRequests, InternalServerError,
+    BadGateway, ServiceUnavailable, GatewayTimeout,
+    HTTPException
+)
+import uuid
 
 # -------------------------- 读取配置文件 --------------------------
 config = configparser.ConfigParser()
@@ -943,6 +950,113 @@ def group_owner_required(f):
             flash('请先登录！', 'danger')
             return redirect(url_for('login'))
     return decorated_function
+
+# -------------------------- 错误处理配置 --------------------------
+ERROR_CONFIGS = {
+    400: {
+        'title': '无效的请求',
+        'description': '服务器无法理解此请求，可能是参数格式不正确或缺少必要参数。'
+    },
+    401: {
+        'title': '需要身份验证',
+        'description': '您需要登录才能访问此资源。'
+    },
+    403: {
+        'title': '权限不足',
+        'description': '您没有权限访问此资源。'
+    },
+    404: {
+        'title': '资源不存在',
+        'description': '您要访问的页面不存在或已被移动。'
+    },
+    408: {
+        'title': '操作超时',
+        'description': '服务器等待请求时超时。'
+    },
+    429: {
+        'title': '操作过于频繁',
+        'description': '您的请求过于频繁，请稍后再试。'
+    },
+    500: {
+        'title': '服务器遇到错误',
+        'description': '服务器在处理请求时发生了内部错误。'
+    },
+    502: {
+        'title': '上游服务错误',
+        'description': '服务器作为网关或代理时，从上游服务器收到无效响应。'
+    },
+    503: {
+        'title': '系统维护中',
+        'description': '服务器暂时无法处理请求，通常是由于维护或过载。'
+    },
+    504: {
+        'title': '响应超时',
+        'description': '服务器作为网关或代理时，未能及时从上游服务器收到响应。'
+    }
+}
+
+def render_error_page(error_code, error_details=None, request_path=None, 
+                     request_method=None, user_agent=None, debug_mode=False, 
+                     is_admin=False):
+    """渲染错误页面"""
+    
+    # 获取错误配置
+    config = ERROR_CONFIGS.get(error_code, {
+        'title': f'HTTP {error_code} 错误',
+        'description': '发生了未知错误。',
+        'explanation': f'HTTP {error_code} - 未定义的错误状态码。'
+    })
+    
+    # 生成请求ID
+    request_id = str(uuid.uuid4())[:8]
+    
+    return render_template('error.html',
+        error_code=error_code,
+        error_title=config['title'],
+        error_description=config['description'],
+        error_icon='',  # 由前端JavaScript动态设置
+        solutions='',   # 由前端JavaScript动态设置
+    )
+
+# -------------------------- 全局错误处理器 --------------------------
+@app.errorhandler(Exception)
+def handle_all_errors(e):
+    """处理所有异常"""
+    
+    # 获取HTTP状态码
+    if isinstance(e, HTTPException):
+        error_code = e.code
+        error_details = str(e)
+    else:
+        error_code = 500
+        error_details = str(e) if app.debug else None
+    
+    # 获取请求信息
+    request_path = request.path
+    request_method = request.method
+    user_agent = request.user_agent.string if request.user_agent else None
+    
+    # 检查当前用户是否为管理员
+    is_admin = False
+    if current_user and hasattr(current_user, 'is_authenticated') and current_user.is_authenticated:
+        is_admin = getattr(current_user, 'is_admin', False)
+    
+    # 渲染错误页面
+    return render_error_page(
+        error_code=error_code,
+        error_details=error_details,
+        request_path=request_path,
+        request_method=request_method,
+        user_agent=user_agent,
+        debug_mode=app.debug,
+        is_admin=is_admin
+    ), error_code
+
+# 处理404错误的特殊路由（因为404可能发生在路由匹配之前）
+@app.route('/<path:invalid_path>')
+def handle_404(invalid_path):
+    """处理所有未匹配的路由，返回404页面"""
+    return render_error_page(404), 404
 
 # -------------------------- 登录/登出 --------------------------
 @login_manager.user_loader
@@ -3866,5 +3980,11 @@ def serve_signature_file(filename):
 
 # -------------------------- 启动应用 --------------------------
 if __name__ == '__main__':
+    # 初始化定时任务调度器
+    app.scheduler = init_scheduler()
     
-    app.run(debug=True, host='0.0.0.0', port=80)
+    # 确保应用退出时关闭调度器
+    if app.scheduler:
+        atexit.register(lambda: app.scheduler.shutdown())
+    
+    app.run(debug=DEBUG, host=HOST, port=PORT)
